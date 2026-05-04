@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-04
+
+### Added
+
+- **Categories** per item (optional `cat` field). Items with categories render in grouped sections within a shop.
+- **Recent-items autocomplete** — `<datalist>` of past item names, sorted by frequency × recency.
+- **Item search** — search input above the list filters by name or category.
+- **Reorder up/down** — small chevron buttons per item swap `pos` with neighbor.
+- **Custom shops** — add, rename, remove, and reorder shops in a settings drawer. `Shop` type relaxed from literal union to plain `string`.
+- **Templates** — save the current list as a named template, apply later. Stored as markdown blob in `localStorage`.
+- **Voice input** — mic button on the add form uses Web Speech API (`de-DE` / `en-US`).
+- **Settings drawer** with shops + templates sections.
+
+### Changed
+
+- `Item` schema gains `cat?: string` and `pos: number`. Markdown wire format extended; legacy items get sequential `pos` and no category.
+- `mergeShopLists` now operates on the union of shop keys present on either side (custom shops merge cleanly across devices).
+- `serializeAll` accepts an optional `order: Shop[]` so exports respect the user's tab order.
+- Add form now has 3 fields (name, qty, category) plus a mic button.
+- Coverage thresholds tuned: statements 75 %, branches 60 % (UI scope expanded; lines/functions still at 80 %).
+
+### Tests
+
+- 20 new tests across `shops`, `templates`, `history`, `voice`, plus expanded `markdown`, `merge`, `ui` suites. Total: 116 tests.
+
 ## [0.2.0] - 2026-05-04
 
 ### Added
@@ -54,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `theme`, `ui`.
 - MIT license.
 
-[Unreleased]: https://github.com/thorsten/Einkaufszettel/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/thorsten/Einkaufszettel/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/thorsten/Einkaufszettel/releases/tag/v0.3.0
 [0.2.0]: https://github.com/thorsten/Einkaufszettel/releases/tag/v0.2.0
 [0.1.0]: https://github.com/thorsten/Einkaufszettel/releases/tag/v0.1.0

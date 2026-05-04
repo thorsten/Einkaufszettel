@@ -13,6 +13,7 @@ function mkItem(over: Partial<Item> = {}): Item {
     lamport: 1,
     dev: 'd1',
     tomb: false,
+    pos: 0,
     ...over,
   };
 }

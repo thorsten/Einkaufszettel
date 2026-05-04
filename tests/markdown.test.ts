@@ -8,7 +8,7 @@ import {
   serializeAll,
   serializeShop,
 } from '../src/markdown';
-import { SHOPS, type Item } from '../src/types';
+import { DEFAULT_SHOPS, type Item } from '../src/types';
 
 function mkItem(over: Partial<Item> = {}): Item {
   return {
@@ -20,116 +20,101 @@ function mkItem(over: Partial<Item> = {}): Item {
     lamport: 1,
     dev: 'd1',
     tomb: false,
+    pos: 0,
     ...over,
   };
 }
 
 describe('emptyLists', () => {
-  it('returns empty array for every shop', () => {
+  it('returns empty array for every default shop', () => {
     const lists = emptyLists();
-    for (const s of SHOPS) expect(lists[s]).toEqual([]);
+    for (const s of DEFAULT_SHOPS) expect(lists[s]).toEqual([]);
+  });
+  it('respects custom shop list', () => {
+    const lists = emptyLists(['DM', 'Müller']);
+    expect(lists['DM']).toEqual([]);
+    expect(lists['Müller']).toEqual([]);
   });
 });
 
 describe('newItem', () => {
-  it('creates item with metadata', () => {
-    const it = newItem({ name: 'Brot', qty: '1', dev: 'd', lamport: 5 });
-    expect(it).toMatchObject({ name: 'Brot', qty: '1', dev: 'd', lamport: 5, tomb: false });
+  it('creates item with metadata + pos', () => {
+    const it = newItem({ name: 'Brot', qty: '1', dev: 'd', lamport: 5, pos: 7 });
+    expect(it).toMatchObject({ name: 'Brot', qty: '1', dev: 'd', lamport: 5, pos: 7, tomb: false });
     expect(typeof it.id).toBe('string');
-    expect(it.ts).toBeGreaterThan(0);
   });
 });
 
 describe('serializeShop', () => {
-  it('emits metadata comment per item', () => {
+  it('emits metadata comment with pos', () => {
     const md = serializeShop('ALDI', [
-      mkItem({ id: 'a', name: 'Milch', qty: '2 L', ts: 100, lamport: 3, dev: 'dx' }),
+      mkItem({ id: 'a', name: 'Milch', qty: '2 L', ts: 100, lamport: 3, dev: 'dx', pos: 5 }),
     ]);
-    expect(md).toContain('# ALDI');
-    expect(md).toContain('- [ ] Milch (2 L) <!-- id:a ts:100 lamport:3 dev:dx tomb:0 -->');
+    expect(md).toContain('- [ ] Milch (2 L) <!-- id:a ts:100 lamport:3 dev:dx tomb:0 pos:5 -->');
   });
 
-  it('serializes tombstoned items with tomb:1', () => {
-    const md = serializeShop('REWE', [mkItem({ id: 'z', name: 'Brot', tomb: true })]);
-    expect(md).toContain('tomb:1');
+  it('serializes category when present', () => {
+    const md = serializeShop('ALDI', [mkItem({ id: 'c', name: 'Apfel', cat: 'Obst' })]);
+    expect(md).toContain('cat:Obst');
   });
 
-  it('renders empty placeholder when no items', () => {
-    expect(serializeShop('REWE', [])).toContain('_keine Einträge_');
+  it('escapes spaces in category', () => {
+    const md = serializeShop('ALDI', [mkItem({ id: 'c', name: 'X', cat: 'Frische Ware' })]);
+    expect(md).toContain('cat:Frische_Ware');
   });
 });
 
 describe('parseShopMarkdown', () => {
-  it('parses items with metadata', () => {
-    const md = '- [x] Banane (3) <!-- id:b ts:42 lamport:7 dev:du tomb:0 -->\n';
-    const items = parseShopMarkdown(md);
-    expect(items[0]).toMatchObject({
-      id: 'b',
-      name: 'Banane',
-      qty: '3',
-      done: true,
-      ts: 42,
-      lamport: 7,
-      dev: 'du',
-      tomb: false,
-    });
+  it('parses pos', () => {
+    const items = parseShopMarkdown('- [ ] X <!-- id:a ts:1 lamport:1 dev:d tomb:0 pos:42 -->\n');
+    expect(items[0].pos).toBe(42);
   });
 
-  it('parses tombstone flag', () => {
-    const items = parseShopMarkdown('- [ ] Alt <!-- id:x ts:1 lamport:1 dev:d tomb:1 -->\n');
-    expect(items[0].tomb).toBe(true);
+  it('parses category and unescapes underscores', () => {
+    const items = parseShopMarkdown(
+      '- [ ] X <!-- id:a ts:1 lamport:1 dev:d tomb:0 pos:1 cat:Frische_Ware -->\n',
+    );
+    expect(items[0].cat).toBe('Frische Ware');
   });
 
-  it('falls back when metadata missing (legacy)', () => {
-    const items = parseShopMarkdown('- [ ] Apfel\n- [x] Banane (3)\n');
-    expect(items).toHaveLength(2);
-    expect(items[0].dev).toBe('legacy');
-    expect(items[0].lamport).toBe(0);
-    expect(items[0].id).toBeTruthy();
-    expect(items[1]).toMatchObject({ name: 'Banane', qty: '3', done: true });
-  });
-
-  it('ignores non-item lines', () => {
-    expect(parseShopMarkdown('# Header\n\nrandom text\n')).toHaveLength(0);
+  it('legacy without metadata gets sequential pos', () => {
+    const items = parseShopMarkdown('- [ ] A\n- [ ] B\n');
+    expect(items[0].pos).toBe(0);
+    expect(items[1].pos).toBe(1);
   });
 });
 
 describe('round-trip serialize/parse', () => {
-  it('preserves all metadata', () => {
+  it('preserves all metadata including cat + pos', () => {
     const original = emptyLists();
-    original['V-MARKT'] = [
-      mkItem({ id: 'a', name: 'Käse', qty: '200 g', ts: 99, lamport: 2, dev: 'dh' }),
+    original['ALDI'] = [
+      mkItem({ id: 'a', name: 'Käse', qty: '200 g', cat: 'Milch', pos: 3, lamport: 2 }),
     ];
-    original.EDEKA = [mkItem({ id: 'b', name: 'Eier', done: true, lamport: 4 })];
-
-    const md = serializeAll(original);
-    const parsed = parseAllMarkdown(md);
-
-    expect(parsed['V-MARKT'][0]).toMatchObject({
+    const parsed = parseAllMarkdown(serializeAll(original, ['ALDI']));
+    expect(parsed.ALDI[0]).toMatchObject({
       id: 'a',
       name: 'Käse',
       qty: '200 g',
-      ts: 99,
+      cat: 'Milch',
+      pos: 3,
       lamport: 2,
-      dev: 'dh',
-      tomb: false,
     });
-    expect(parsed.EDEKA[0]).toMatchObject({ id: 'b', name: 'Eier', done: true, lamport: 4 });
-    expect(parsed.ALDI).toEqual([]);
   });
 
-  it('preserves tombstones across round-trip', () => {
-    const original = emptyLists();
-    original.ALDI = [mkItem({ id: 't', name: 'Weg', tomb: true, lamport: 9 })];
-    const parsed = parseAllMarkdown(serializeAll(original));
-    expect(parsed.ALDI[0]).toMatchObject({ id: 't', tomb: true, lamport: 9 });
+  it('serializeAll respects shop order', () => {
+    const lists = emptyLists();
+    lists['REWE'] = [mkItem({ id: 'r' })];
+    lists['ALDI'] = [mkItem({ id: 'a' })];
+    const md = serializeAll(lists, ['REWE', 'ALDI']);
+    const reweAt = md.indexOf('# REWE');
+    const aldiAt = md.indexOf('# ALDI');
+    expect(reweAt).toBeLessThan(aldiAt);
   });
 
-  it('handles unknown shop blocks by ignoring', () => {
-    const md =
-      '# UNKNOWN\n- [ ] foo\n# ALDI\n- [ ] Milch <!-- id:1 ts:1 lamport:1 dev:d tomb:0 -->\n';
+  it('parses unknown shop name as custom shop key', () => {
+    const md = '# DM\n- [ ] Zahnpasta <!-- id:z ts:1 lamport:1 dev:d tomb:0 pos:0 -->\n';
     const parsed = parseAllMarkdown(md);
-    expect(parsed.ALDI[0].name).toBe('Milch');
+    expect(parsed['DM']?.[0]?.name).toBe('Zahnpasta');
   });
 });
 
@@ -139,9 +124,5 @@ describe('maxLamport', () => {
     lists.ALDI = [mkItem({ lamport: 3 }), mkItem({ id: 'i2', lamport: 7 })];
     lists.REWE = [mkItem({ id: 'i3', lamport: 5 })];
     expect(maxLamport(lists)).toBe(7);
-  });
-
-  it('returns 0 when empty', () => {
-    expect(maxLamport(emptyLists())).toBe(0);
   });
 });

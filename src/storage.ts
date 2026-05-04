@@ -1,6 +1,6 @@
 import { emptyLists, parseAllMarkdown, serializeAll } from './markdown';
 import { mergeShopLists } from './merge';
-import type { ShopLists } from './types';
+import type { Shop, ShopLists } from './types';
 
 export const STORAGE_KEY = 'einkaufszettel.v1.md';
 
@@ -23,16 +23,16 @@ export class ListStore {
     }
   }
 
-  save(lists: ShopLists): void {
-    this.storage.setItem(STORAGE_KEY, serializeAll(lists));
+  save(lists: ShopLists, order?: Shop[]): void {
+    this.storage.setItem(STORAGE_KEY, serializeAll(lists, order));
   }
 
   clear(): void {
     this.storage.removeItem(STORAGE_KEY);
   }
 
-  exportMarkdown(lists: ShopLists): string {
-    return serializeAll(lists);
+  exportMarkdown(lists: ShopLists, order?: Shop[]): string {
+    return serializeAll(lists, order);
   }
 
   mergeMarkdown(localLists: ShopLists, incomingMd: string): ShopLists {

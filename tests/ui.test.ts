@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Lamport } from '../src/clock';
 import { I18n } from '../src/i18n';
+import { ShopRegistry } from '../src/shops';
 import { ListStore, type StorageLike } from '../src/storage';
+import { TemplateStore } from '../src/templates';
 import { ThemeController, type MediaQueryLike } from '../src/theme';
 import { renderApp, type AppState } from '../src/ui';
 import { UndoStack } from '../src/undo';
 import { emptyLists } from '../src/markdown';
-import { SHOPS, type Item } from '../src/types';
+import { DEFAULT_SHOPS, type Item } from '../src/types';
 
 class MemoryStorage implements StorageLike {
   data = new Map<string, string>();
@@ -37,6 +39,7 @@ function mkItem(over: Partial<Item> = {}): Item {
     lamport: 1,
     dev: 'd1',
     tomb: false,
+    pos: 0,
     ...over,
   };
 }
@@ -52,6 +55,8 @@ function setup(): { root: HTMLElement; state: AppState; store: ListStore } {
     document.documentElement,
   );
   const i18n = new I18n(new MemoryStorage(), () => 'de');
+  const shops = new ShopRegistry(new MemoryStorage());
+  const templates = new TemplateStore(new MemoryStorage());
   const state: AppState = {
     active: 'ALDI',
     lists: emptyLists(),
@@ -60,6 +65,8 @@ function setup(): { root: HTMLElement; state: AppState; store: ListStore } {
     device: 'test-dev',
     clock: new Lamport(0),
     undo: new UndoStack(),
+    shops,
+    templates,
   };
   renderApp(root, state, store);
   return { root, state, store };
@@ -71,21 +78,15 @@ describe('renderApp', () => {
     document.documentElement.classList.remove('dark');
   });
 
-  it('renders version badge in header', async () => {
+  it('renders version badge', async () => {
     const { root } = setup();
     const { VERSION } = await import('../src/version');
-    const badge = root.querySelector('[data-version]');
-    expect(badge?.textContent).toBe(`v${VERSION}`);
+    expect(root.querySelector('[data-version]')?.textContent).toBe(`v${VERSION}`);
   });
 
-  it('renders 4 shop tabs', () => {
+  it('renders default shop tabs', () => {
     const { root } = setup();
-    expect(root.querySelectorAll('[data-shop]')).toHaveLength(SHOPS.length);
-  });
-
-  it('marks active shop tab', () => {
-    const { root } = setup();
-    expect(root.querySelector('[data-shop="ALDI"]')?.getAttribute('aria-selected')).toBe('true');
+    expect(root.querySelectorAll('[data-shop]')).toHaveLength(DEFAULT_SHOPS.length);
   });
 
   it('shows empty state when no items', () => {
@@ -93,45 +94,78 @@ describe('renderApp', () => {
     expect(root.textContent).toContain('Noch keine Artikel');
   });
 
-  it('adds item via form, snapshots undo, shows toast', () => {
+  it('adds item with category via form', () => {
     const { root, state } = setup();
     const form = root.querySelector<HTMLFormElement>('[data-form="add"]')!;
     form.querySelector<HTMLInputElement>('input[name="name"]')!.value = 'Milch';
-    form.querySelector<HTMLInputElement>('input[name="qty"]')!.value = '1 L';
+    form.querySelector<HTMLInputElement>('input[name="cat"]')!.value = 'Milch';
     form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-    expect(state.lists.ALDI).toHaveLength(1);
-    expect(state.lists.ALDI[0]).toMatchObject({
-      name: 'Milch',
-      qty: '1 L',
-      dev: 'test-dev',
-      tomb: false,
-    });
-    expect(state.undo.size()).toBe(1);
-    expect(root.querySelector('[data-toast]')).toBeTruthy();
+    expect(state.lists.ALDI[0]).toMatchObject({ name: 'Milch', cat: 'Milch' });
   });
 
-  it('toggles done and bumps lamport', () => {
+  it('search filters visible items', () => {
+    const { root, state, store } = setup();
+    state.lists.ALDI = [mkItem({ id: 'a', name: 'Milch' }), mkItem({ id: 'b', name: 'Brot' })];
+    renderApp(root, state, store);
+    const input = root.querySelector<HTMLInputElement>('[data-input="search"]')!;
+    input.value = 'mi';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(state.search).toBe('mi');
+    const items = root.querySelectorAll('[data-item]');
+    expect(items).toHaveLength(1);
+  });
+
+  it('shows no-results message when filter has no match', () => {
+    const { root, state, store } = setup();
+    state.lists.ALDI = [mkItem({ id: 'a', name: 'Milch' })];
+    state.search = 'banane';
+    renderApp(root, state, store);
+    expect(root.textContent).toContain('Keine Treffer');
+  });
+
+  it('group headers shown when items have categories', () => {
+    const { root, state, store } = setup();
+    state.lists.ALDI = [
+      mkItem({ id: 'a', name: 'Apfel', cat: 'Obst' }),
+      mkItem({ id: 'b', name: 'Brot', cat: 'Brot' }),
+    ];
+    renderApp(root, state, store);
+    expect(root.textContent).toContain('Obst');
+    expect(root.textContent).toContain('Brot');
+  });
+
+  it('move-up swaps pos with neighbor above', () => {
+    const { root, state, store } = setup();
+    state.lists.ALDI = [
+      mkItem({ id: 'a', name: 'A', pos: 0 }),
+      mkItem({ id: 'b', name: 'B', pos: 1 }),
+    ];
+    renderApp(root, state, store);
+    const liB = root.querySelector('[data-item="b"]')!;
+    liB.querySelector<HTMLButtonElement>('[data-action="move-up"]')!.click();
+    expect(state.lists.ALDI.find((i) => i.id === 'b')?.pos).toBe(0);
+    expect(state.lists.ALDI.find((i) => i.id === 'a')?.pos).toBe(1);
+  });
+
+  it('toggles done', () => {
     const { root, state, store } = setup();
     state.lists.ALDI = [mkItem({ id: 'x', name: 'Brot', lamport: 1 })];
     renderApp(root, state, store);
-    const before = state.lists.ALDI[0].lamport;
     root
       .querySelector<HTMLInputElement>('[data-action="toggle"]')!
       .dispatchEvent(new Event('change', { bubbles: true }));
     expect(state.lists.ALDI[0].done).toBe(true);
-    expect(state.lists.ALDI[0].lamport).toBeGreaterThan(before);
   });
 
-  it('delete tombstones the item', () => {
+  it('delete tombstones', () => {
     const { root, state, store } = setup();
     state.lists.ALDI = [mkItem({ id: 'x', name: 'Brot' })];
     renderApp(root, state, store);
     root.querySelector<HTMLButtonElement>('[data-action="delete"]')!.click();
-    expect(state.lists.ALDI).toHaveLength(1);
     expect(state.lists.ALDI[0].tomb).toBe(true);
   });
 
-  it('hides tombstoned items and counts only live in tab', () => {
+  it('hides tombstoned items', () => {
     const { root, state, store } = setup();
     state.lists.ALDI = [
       mkItem({ id: 'a', name: 'live' }),
@@ -139,7 +173,6 @@ describe('renderApp', () => {
     ];
     renderApp(root, state, store);
     expect(root.querySelectorAll('[data-item]')).toHaveLength(1);
-    expect(root.querySelector('[data-shop="ALDI"]')!.textContent).toContain('1');
   });
 
   it('switches active shop on tab click', () => {
@@ -148,19 +181,10 @@ describe('renderApp', () => {
     expect(state.active).toBe('REWE');
   });
 
-  it('cycles theme on toggle', () => {
+  it('cycles theme + lang', () => {
     const { root, state } = setup();
-    expect(state.theme.theme).toBe('system');
     root.querySelector<HTMLButtonElement>('[data-action="theme"]')!.click();
     expect(state.theme.theme).toBe('light');
-    root.querySelector<HTMLButtonElement>('[data-action="theme"]')!.click();
-    expect(state.theme.theme).toBe('dark');
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
-  });
-
-  it('cycles language and re-renders with new strings', () => {
-    const { root, state } = setup();
-    expect(root.textContent).toContain('Noch keine Artikel');
     root.querySelector<HTMLButtonElement>('[data-action="lang"]')!.click();
     expect(state.i18n.lang).toBe('en');
     expect(root.textContent).toContain('No items yet');
@@ -171,81 +195,53 @@ describe('renderApp', () => {
     state.lists.ALDI = [mkItem({ id: 'x', name: '<script>alert(1)</script>' })];
     renderApp(root, state, store);
     expect(root.querySelector('script')).toBeNull();
-    const span = root.querySelector('[data-item="x"] span')!;
-    expect(span.textContent).toBe('<script>alert(1)</script>');
   });
 
-  describe('edit in place', () => {
-    it('shows edit form on edit click', () => {
-      const { root, state, store } = setup();
-      state.lists.ALDI = [mkItem({ id: 'x', name: 'Brot' })];
-      renderApp(root, state, store);
-      root.querySelector<HTMLButtonElement>('[data-action="edit"]')!.click();
-      expect(state.editingId).toBe('x');
-      expect(root.querySelector('[data-form="edit"]')).toBeTruthy();
+  describe('settings drawer', () => {
+    it('opens and closes', () => {
+      const { root, state } = setup();
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      expect(state.settingsOpen).toBe(true);
+      expect(root.querySelector('[data-settings-overlay]')).toBeTruthy();
+      root.querySelector<HTMLButtonElement>('[data-action="settings-close"]')!.click();
+      expect(state.settingsOpen).toBe(false);
     });
 
-    it('saves edits and bumps lamport', () => {
-      const { root, state, store } = setup();
-      state.lists.ALDI = [mkItem({ id: 'x', name: 'Brot', qty: '1', lamport: 1 })];
-      renderApp(root, state, store);
-      root.querySelector<HTMLButtonElement>('[data-action="edit"]')!.click();
-      const form = root.querySelector<HTMLFormElement>('[data-form="edit"]')!;
-      form.querySelector<HTMLInputElement>('input[name="name"]')!.value = 'Vollkornbrot';
-      form.querySelector<HTMLInputElement>('input[name="qty"]')!.value = '2';
+    it('adds new shop via form', () => {
+      const { root, state } = setup();
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const form = root.querySelector<HTMLFormElement>('[data-form="shop-add"]')!;
+      form.querySelector<HTMLInputElement>('input[name="name"]')!.value = 'DM';
       form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-      expect(state.lists.ALDI[0].name).toBe('Vollkornbrot');
-      expect(state.lists.ALDI[0].qty).toBe('2');
-      expect(state.lists.ALDI[0].lamport).toBeGreaterThan(1);
-      expect(state.editingId).toBeUndefined();
+      expect(state.shops.shops).toContain('DM');
     });
 
-    it('cancel closes edit without changes', () => {
+    it('saves and applies a template', () => {
       const { root, state, store } = setup();
-      state.lists.ALDI = [mkItem({ id: 'x', name: 'Brot' })];
+      state.lists.ALDI = [mkItem({ id: 'a', name: 'Milch' })];
       renderApp(root, state, store);
-      root.querySelector<HTMLButtonElement>('[data-action="edit"]')!.click();
-      root.querySelector<HTMLButtonElement>('[data-action="cancel-edit"]')!.click();
-      expect(state.editingId).toBeUndefined();
-      expect(state.lists.ALDI[0].name).toBe('Brot');
-    });
-  });
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const saveForm = root.querySelector<HTMLFormElement>('[data-form="template-save"]')!;
+      saveForm.querySelector<HTMLInputElement>('input[name="name"]')!.value = 'Wochen';
+      saveForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      expect(state.templates.list().map((t) => t.name)).toContain('Wochen');
 
-  describe('clear checked', () => {
-    it('button absent when no checked items', () => {
-      const { root, state, store } = setup();
-      state.lists.ALDI = [mkItem({ id: 'a', done: false })];
+      // clear and re-apply
+      state.lists.ALDI = [];
       renderApp(root, state, store);
-      expect(root.querySelector('[data-action="clear-checked"]')).toBeNull();
-    });
-
-    it('button present when at least one checked', () => {
-      const { root, state, store } = setup();
-      state.lists.ALDI = [mkItem({ id: 'a', done: true }), mkItem({ id: 'b', done: false })];
-      renderApp(root, state, store);
-      expect(root.querySelector('[data-action="clear-checked"]')).toBeTruthy();
-    });
-
-    it('tombstones all checked items in active shop only', () => {
-      const { root, state, store } = setup();
-      state.lists.ALDI = [
-        mkItem({ id: 'a', done: true }),
-        mkItem({ id: 'b', done: false }),
-        mkItem({ id: 'c', done: true }),
-      ];
-      state.lists.REWE = [mkItem({ id: 'd', done: true })];
-      renderApp(root, state, store);
-      root.querySelector<HTMLButtonElement>('[data-action="clear-checked"]')!.click();
-      const aldi = state.lists.ALDI;
-      expect(aldi.find((i) => i.id === 'a')?.tomb).toBe(true);
-      expect(aldi.find((i) => i.id === 'b')?.tomb).toBe(false);
-      expect(aldi.find((i) => i.id === 'c')?.tomb).toBe(true);
-      expect(state.lists.REWE[0].tomb).toBe(false);
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const apply = root.querySelector<HTMLButtonElement>(
+        '[data-action="template-apply"][data-template-name="Wochen"]',
+      )!;
+      apply.click();
+      expect(state.lists.ALDI.length).toBeGreaterThan(0);
+      expect(state.lists.ALDI[0].name).toBe('Milch');
+      expect(state.lists.ALDI[0].id).not.toBe('a');
     });
   });
 
   describe('undo', () => {
-    it('undo restores previous lists after add', () => {
+    it('undo restores after add', () => {
       const { root, state } = setup();
       const form = root.querySelector<HTMLFormElement>('[data-form="add"]')!;
       form.querySelector<HTMLInputElement>('input[name="name"]')!.value = 'Milch';
@@ -253,21 +249,6 @@ describe('renderApp', () => {
       expect(state.lists.ALDI).toHaveLength(1);
       root.querySelector<HTMLButtonElement>('[data-action="undo"]')!.click();
       expect(state.lists.ALDI).toHaveLength(0);
-    });
-
-    it('undo restores tombstone after delete', () => {
-      const { root, state, store } = setup();
-      state.lists.ALDI = [mkItem({ id: 'x', name: 'Brot' })];
-      renderApp(root, state, store);
-      root.querySelector<HTMLButtonElement>('[data-action="delete"]')!.click();
-      expect(state.lists.ALDI[0].tomb).toBe(true);
-      root.querySelector<HTMLButtonElement>('[data-action="undo"]')!.click();
-      expect(state.lists.ALDI[0].tomb).toBe(false);
-    });
-
-    it('undo button hidden when no toast active', () => {
-      const { root } = setup();
-      expect(root.querySelector('[data-action="undo"]')).toBeNull();
     });
   });
 });

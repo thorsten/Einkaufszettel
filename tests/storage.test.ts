@@ -26,6 +26,7 @@ function mkItem(over: Partial<Item> = {}): Item {
     lamport: 1,
     dev: 'd1',
     tomb: false,
+    pos: 0,
     ...over,
   };
 }
@@ -73,7 +74,7 @@ describe('ListStore', () => {
     local.ALDI = [mkItem({ id: 'a', name: 'lokal', lamport: 2 })];
     store.save(local);
 
-    const incoming = '# ALDI\n- [ ] remote <!-- id:b ts:1 lamport:1 dev:d2 tomb:0 -->\n';
+    const incoming = '# ALDI\n- [ ] remote <!-- id:b ts:1 lamport:1 dev:d2 tomb:0 pos:0 -->\n';
     const merged = store.mergeMarkdown(local, incoming);
 
     expect(merged.ALDI).toHaveLength(2);
@@ -86,7 +87,7 @@ describe('ListStore', () => {
     const local = emptyLists();
     local.ALDI = [mkItem({ id: 'x', name: 'old', lamport: 1 })];
 
-    const incoming = '# ALDI\n- [ ] new <!-- id:x ts:99 lamport:9 dev:d2 tomb:0 -->\n';
+    const incoming = '# ALDI\n- [ ] new <!-- id:x ts:99 lamport:9 dev:d2 tomb:0 pos:0 -->\n';
     const merged = store.mergeMarkdown(local, incoming);
     expect(merged.ALDI[0].name).toBe('new');
   });

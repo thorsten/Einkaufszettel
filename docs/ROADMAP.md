@@ -6,17 +6,9 @@ Feature backlog grouped by impact-to-effort. Pick what matches priorities.
 
 All eight Tier 1 features implemented. See [Done](#done) at bottom.
 
-## Tier 2 — meaningful (1–3 days each)
+## Tier 2 — meaningful ✅ shipped 2026-05-04 (v0.3.0)
 
-| Feature                          | Why                                                                                                |
-| -------------------------------- | -------------------------------------------------------------------------------------------------- |
-| **Categories within a shop**     | "Obst", "Milch", "Tiefkühl" — large lists become navigable. Optional `cat` field on Item.          |
-| **Recent-items autocomplete**    | Type "M" → suggest "Milch" from history. Keeps list of past names per shop, dedup, frequency-sort. |
-| **Item search / filter**         | Cmd-F-style filter on active shop. One input, debounce, fuzzy-match.                               |
-| **Drag-to-reorder**              | Needs `pos: number` (fractional) in CRDT. Reordering = new pos, LWW.                               |
-| **Custom shops**                 | Add/rename/delete shop tabs. Today's `SHOPS` const becomes runtime list.                           |
-| **Shopping templates**           | "Wocheneinkauf" preset re-applies a list. Stored as separate markdown file.                        |
-| **Voice input** (Web Speech API) | Tap mic → "Milch zwei Liter" → parse to item+qty. Safari iOS supports.                             |
+All seven Tier 2 features implemented. See [Done](#done) at bottom.
 
 ## Tier 3 — sync upgrades (3–7 days)
 
@@ -67,6 +59,18 @@ If forced to pick three first: **edit-in-place**, **swipe-to-delete**, **recent-
 - Replace any tier section if scope shifts. Keep file under ~300 lines.
 
 ## Done
+
+### v0.3.0 — 2026-05-04
+
+| Feature                   | Module                                                                 |
+| ------------------------- | ---------------------------------------------------------------------- |
+| Categories within a shop  | `cat?: string` in `src/types.ts`; grouped render in `src/ui.ts`        |
+| Recent-items autocomplete | `src/history.ts` `buildSuggestions`; `<datalist>` in add form          |
+| Item search / filter      | `src/ui.ts` search input + `matchesSearch`                             |
+| Up/down reorder           | `pos: number` in `src/types.ts`; `move-up` / `move-down` actions in UI |
+| Custom shops              | `src/shops.ts` `ShopRegistry`; `Shop = string`; settings drawer        |
+| Shopping templates        | `src/templates.ts` `TemplateStore`; settings drawer                    |
+| Voice input               | `src/voice.ts` `startVoice` (Web Speech API)                           |
 
 ### v0.2.0 — 2026-05-04
 

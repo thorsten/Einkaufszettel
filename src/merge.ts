@@ -1,5 +1,4 @@
-import { emptyLists } from './markdown';
-import { SHOPS, type Item, type ShopLists } from './types';
+import type { Item, ShopLists } from './types';
 
 export function compareItem(a: Item, b: Item): number {
   if (a.lamport !== b.lamport) return a.lamport - b.lamport;
@@ -19,24 +18,26 @@ export function mergeShopLists(a: ShopLists, b: ShopLists, opts: MergeOptions = 
   const retention = opts.tombstoneRetentionMs ?? DEFAULT_RETENTION_MS;
   const now = opts.now ?? Date.now();
   const cutoff = now - retention;
-  const out = emptyLists();
+  const out: ShopLists = {};
 
-  for (const shop of SHOPS) {
+  const shops = new Set<string>([...Object.keys(a), ...Object.keys(b)]);
+  for (const shop of shops) {
     const map = new Map<string, Item>();
-    for (const it of [...a[shop], ...b[shop]]) {
+    const all = [...(a[shop] ?? []), ...(b[shop] ?? [])];
+    for (const it of all) {
       const existing = map.get(it.id);
-      if (!existing || compareItem(it, existing) > 0) {
-        map.set(it.id, it);
-      }
+      if (!existing || compareItem(it, existing) > 0) map.set(it.id, it);
     }
+    const kept: Item[] = [];
     for (const it of map.values()) {
       if (it.tomb && it.ts < cutoff) continue;
-      out[shop].push(it);
+      kept.push(it);
     }
+    out[shop] = kept;
   }
   return out;
 }
 
 export function mergeMany(lists: ShopLists[], opts?: MergeOptions): ShopLists {
-  return lists.reduce((acc, cur) => mergeShopLists(acc, cur, opts), emptyLists());
+  return lists.reduce((acc, cur) => mergeShopLists(acc, cur, opts), {} as ShopLists);
 }
