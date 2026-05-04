@@ -9,7 +9,7 @@ Offline shopping list PWA for **V-MARKT, ALDI, EDEKA, REWE**. Built for two iPho
 - 🧩 CRDT merge — conflict-free, deterministic, commutative
 - 🪦 Tombstones for deletes, 30-day GC
 - ⚡ No frontend framework. TypeScript + Tailwind v4 + bare DOM
-- ✅ 60 vitest tests
+- ✅ 116 vitest tests, coverage gate, conventional-commits enforced via husky
 
 ## Requirements
 
@@ -108,22 +108,51 @@ iCloud Drive — like any plain file sync — does not merge file contents. Conc
 
 Wipe: clear site data in Safari → fresh device ID, empty list.
 
+## Commit conventions
+
+This repo enforces [Conventional Commits](https://www.conventionalcommits.org/) via [commitlint](https://commitlint.js.org/) and a Husky `commit-msg` hook.
+
+Format: `type(scope?): subject`. Allowed types: `feat`, `fix`, `docs`, `chore`, `build`, `ci`, `refactor`, `perf`, `test`, `style`, `revert`.
+
+```
+feat: add voice input
+fix(merge): drop stale tombstones older than retention
+docs(readme): refresh version table
+```
+
+A `pre-commit` hook runs:
+
+1. `lint-staged` — Prettier formats every staged file in place
+2. `pnpm typecheck` — `tsc --noEmit`
+3. `pnpm test` — full Vitest suite
+
+Hooks install automatically via the `prepare` script on `pnpm install`. Skip in emergencies with `git commit --no-verify` (don't make a habit of it).
+
 ## Tests
 
 ```bash
-pnpm test            # 60 tests, ~10 s
+pnpm test            # full suite, ~10 s
 pnpm test:watch      # watch mode
+pnpm test:coverage   # with coverage gate
 ```
 
-| File                     | Coverage                                 |
-| ------------------------ | ---------------------------------------- |
-| `tests/clock.test.ts`    | Lamport observe / tick / non-finite      |
-| `tests/device.test.ts`   | ID minting + persistence                 |
-| `tests/markdown.test.ts` | Round-trip, legacy fallback, tombstones  |
-| `tests/merge.test.ts`    | LWW, tombstone behavior, idempotence     |
-| `tests/storage.test.ts`  | localStorage + mergeMarkdown integration |
-| `tests/theme.test.ts`    | Cycle, persistence, media-query reaction |
-| `tests/ui.test.ts`       | Render, add / toggle / delete, XSS       |
+| File                      | Coverage                                               |
+| ------------------------- | ------------------------------------------------------ |
+| `tests/clock.test.ts`     | Lamport observe / tick / non-finite                    |
+| `tests/device.test.ts`    | ID minting + persistence                               |
+| `tests/markdown.test.ts`  | Round-trip, legacy fallback, tombstones, cat + pos     |
+| `tests/merge.test.ts`     | LWW, tombstone behavior, idempotence, custom shops     |
+| `tests/storage.test.ts`   | localStorage + mergeMarkdown integration               |
+| `tests/theme.test.ts`     | Cycle, persistence, media-query reaction               |
+| `tests/i18n.test.ts`      | Detect / cycle / lookup / fallback                     |
+| `tests/undo.test.ts`      | Push / peek / pop / TTL / max entries                  |
+| `tests/share.test.ts`     | Web Share API + download fallback                      |
+| `tests/gestures.test.ts`  | Swipe-left + pull-to-refresh pointer events            |
+| `tests/shops.test.ts`     | Add / rename / remove / move / reset                   |
+| `tests/templates.test.ts` | Save / list / apply / remove                           |
+| `tests/history.test.ts`   | Suggestions + categories                               |
+| `tests/voice.test.ts`     | SpeechRecognition wrapper + support detection          |
+| `tests/ui.test.ts`        | Render, add / toggle / delete / edit / undo / settings |
 
 ## Deployment
 

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Husky** + **commitlint** + **lint-staged** dev tooling.
+  - `commit-msg` hook enforces [Conventional Commits](https://www.conventionalcommits.org/) via `@commitlint/config-conventional`.
+  - `pre-commit` hook runs `lint-staged` (Prettier on staged files), `pnpm typecheck`, and `pnpm test`.
+  - Hooks install automatically via `prepare` script on `pnpm install`.
+
 ## [0.3.0] - 2026-05-04
 
 ### Added
