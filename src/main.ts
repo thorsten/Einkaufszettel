@@ -1,5 +1,6 @@
 import './style.css';
 import { Lamport } from './clock';
+import { readConfigFromHash } from './config-link';
 import { getOrCreateDeviceId } from './device';
 import { detectLang, I18n } from './i18n';
 import { maxLamport } from './markdown';
@@ -93,6 +94,14 @@ async function applySupabaseConfig(cfg: SupabaseConfig): Promise<void> {
   renderApp(root, state, store);
 }
 
-if (supabaseConfig.enabled) startSupabase(supabaseConfig);
+const incoming = readConfigFromHash(window.location.hash);
+if (incoming) {
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  if (window.confirm(i18n.t('cloud_apply_prompt'))) {
+    void applySupabaseConfig({ ...incoming, enabled: true });
+  }
+} else if (supabaseConfig.enabled) {
+  startSupabase(supabaseConfig);
+}
 
 renderApp(root, state, store);

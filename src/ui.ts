@@ -6,6 +6,7 @@ import { maxLamport, maxPos, minPos, newItem } from './markdown';
 import { shareMarkdown } from './share';
 import type { ShopRegistry } from './shops';
 import type { ListStore } from './storage';
+import { buildShareUrl, shareConfigLink } from './config-link';
 import type { SupabaseConfig, SupabaseSync, SyncStatus } from './supabase';
 import { generateHouseholdId } from './sync-helpers';
 import type { TemplateStore } from './templates';
@@ -275,6 +276,11 @@ function renderToast(state: AppState): string {
   `;
 }
 
+function cloudShareDisabled(state: AppState): boolean {
+  const c = state.supabaseConfig;
+  return !c.url || !c.anonKey || !c.household;
+}
+
 function supabaseStatusClass(status: SyncStatus): string {
   switch (status) {
     case 'connected':
@@ -339,7 +345,10 @@ function renderSettings(state: AppState): string {
                 <input name="household" type="text" placeholder="${escapeHtml(t('cloud_household'))}" value="${escapeHtml(state.supabaseConfig.household)}" class="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs dark:border-slate-600 dark:bg-slate-800" />
                 <button type="button" data-action="cloud-generate" class="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium dark:bg-slate-800">${escapeHtml(t('cloud_household_generate'))}</button>
               </div>
-              <button type="submit" class="w-full rounded-md bg-teal-600 px-3 py-1.5 text-sm font-semibold text-white">${escapeHtml(t('cloud_save'))}</button>
+              <div class="flex gap-2">
+                <button type="submit" class="flex-1 rounded-md bg-teal-600 px-3 py-1.5 text-sm font-semibold text-white">${escapeHtml(t('cloud_save'))}</button>
+                <button type="button" data-action="cloud-share" ${cloudShareDisabled(state) ? 'disabled' : ''} class="flex-1 rounded-md bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 disabled:opacity-40 dark:bg-slate-800 dark:text-slate-200" aria-label="${escapeHtml(t('cloud_share_aria'))}">${escapeHtml(t('cloud_share'))}</button>
+              </div>
             </form>
           </section>
 
@@ -732,6 +741,22 @@ function bind(root: HTMLElement, state: AppState, store: ListStore): void {
     ?.addEventListener('click', () => {
       const input = cloudForm?.querySelector<HTMLInputElement>('input[name="household"]');
       if (input) input.value = generateHouseholdId();
+    });
+
+  root
+    .querySelector<HTMLButtonElement>('[data-action="cloud-share"]')
+    ?.addEventListener('click', () => {
+      if (cloudShareDisabled(state)) return;
+      const url = buildShareUrl(window.location.origin + window.location.pathname, {
+        url: state.supabaseConfig.url,
+        anonKey: state.supabaseConfig.anonKey,
+        household: state.supabaseConfig.household,
+      });
+      void shareConfigLink(url).then((result) => {
+        if (result === 'shared') showToast(state, t('cloud_shared'));
+        else if (result === 'copied') showToast(state, t('cloud_copied'));
+        renderApp(root, state, store);
+      });
     });
 
   root.querySelectorAll<HTMLButtonElement>('[data-action="template-remove"]').forEach((btn) => {

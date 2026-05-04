@@ -75,12 +75,25 @@ Dashboard → **Project Settings ⚙ → API**.
 The household UUID is generated client-side and **partitions your data inside the shared table**.
 
 - Phone A: open ⚙ **Settings → Cloud-Sync (Supabase)** → tap **Neu generieren / Generate** next to **Haushalts-ID / Household ID**. App produces something like `b3a7f2e1-9c4d-4f12-aaaa-1234567890ab`.
-- Copy that UUID to **Phone B** (AirDrop, Messages, manual copy, QR — any channel). Paste into the same field on Phone B.
-- Both devices must use the **identical** household UUID.
+- Both devices must use the **identical** household UUID — see step 5 for the easy way to copy it across.
 
-#### 5. Enable + save
+#### 5. Share the config to Phone B (one tap)
 
-Per device:
+After Phone A has all three fields filled, tap **Konfiguration teilen / Share config**. The app builds a URL like:
+
+```
+https://<your-pages-url>/#cfg=<base64url-blob>
+```
+
+The hash fragment encodes all three values (URL + anon key + household UUID). Phone A's iOS share sheet opens — pick **AirDrop**, **Messages**, **Mail**, anything.
+
+Phone B taps the link → app opens → confirmation prompt: _"Cloud-Sync-Konfiguration aus diesem Link übernehmen?"_ → tap OK → config saved + applied. The hash is scrubbed from the URL after apply so it doesn't sit in browser history.
+
+Fallbacks: if the device doesn't expose Web Share, the app copies the link to clipboard. If clipboard is also unavailable, it falls back to a `prompt()` dialog.
+
+#### 6. Enable + save
+
+Per device (Phone A always; Phone B only if you skipped step 5):
 
 ```
 Supabase URL:   https://<project-ref>.supabase.co
@@ -254,20 +267,22 @@ A GitHub Actions workflow at [`.github/workflows/ci.yml`](.github/workflows/ci.y
 | **lighthouse** | after `build` passes               | `lhci autorun` against `dist/` — perf / a11y / PWA / SEO audits      |
 | **deploy**     | only on push to `main` (after all) | publishes `dist/` artifact to GitHub Pages                           |
 
+Production URL: **<https://einkauf.rinne.bayern>**
+
 One-time repo setup:
 
 1. **Settings → Pages → Source**: select **GitHub Actions**.
-2. Push to `main`. Workflow runs, deploys to `https://<user>.github.io/<repo>/`.
-3. Subsequent pushes auto-redeploy.
+2. **Settings → Pages → Custom domain**: enter `einkauf.rinne.bayern` (matches `public/CNAME` in this repo).
+3. DNS: point an `A`/`AAAA` record (apex) or `CNAME` (subdomain) at GitHub Pages per [their docs](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site).
+4. Push to `main`. Workflow runs, deploys to the custom domain.
+5. Subsequent pushes auto-redeploy.
 
-`BASE_PATH` is detected automatically by `actions/configure-pages` and passed to `vite build`. PWA `start_url` and `scope` follow the base path.
+`BASE_PATH` is detected automatically by `actions/configure-pages` and passed to `vite build`. With the custom domain set, base resolves to `/` so `start_url`, `scope`, and asset URLs all live at the domain root.
 
-### Custom domain or root path
-
-Set the GitHub Pages custom domain in repo settings, or override locally:
+### Custom domain or subpath override
 
 ```bash
-BASE_PATH=/ pnpm build           # root deploy
+BASE_PATH=/ pnpm build           # root deploy (default with custom domain)
 BASE_PATH=/some-path/ pnpm build # custom subpath
 ```
 

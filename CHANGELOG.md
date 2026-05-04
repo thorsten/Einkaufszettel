@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Custom domain**: site now serves at <https://einkauf.rinne.bayern> (was `<user>.github.io/Einkaufszettel/`). `public/CNAME` checked in so the GitHub Pages workflow preserves the domain on every deploy. `BASE_PATH` resolves to `/` automatically, so asset URLs, PWA `start_url`, `scope`, and the share-config link all live at the domain root.
+
+### Migration note
+
+Anyone who installed the PWA from the old subpath URL has a stale home-screen icon pointing at `<user>.github.io/Einkaufszettel/`. Remove the old icon and re-add from the new domain to pick up the updated service-worker scope.
+
+### Added
+
+- **Share config link** for one-tap onboarding of the second device.
+  - "Share config" button in **Settings → Cloud-Sync** builds a URL with the URL + anon key + household UUID base64url-encoded into the hash fragment.
+  - Native share sheet (Web Share API). Falls back to clipboard, then to `prompt()`.
+  - On launch, the receiving device decodes the hash, asks for confirmation, applies the config, and scrubs the hash from history.
+  - `src/config-link.ts` — encode / decode / buildShareUrl / readConfigFromHash / shareConfigLink (all DI-friendly).
+  - 17 new tests in `tests/config-link.test.ts` plus 3 UI integration tests.
+
 ## [0.4.0] - 2026-05-04
 
 ### Added

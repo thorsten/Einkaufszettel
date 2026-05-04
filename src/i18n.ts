@@ -81,6 +81,12 @@ const DE: Dict = {
   cloud_status_error: 'Fehler',
   cloud_save: 'Speichern',
   cloud_warning: 'Haushalts-ID wie ein Passwort behandeln. Beide Geräte brauchen dieselbe ID.',
+  cloud_share: 'Konfiguration teilen',
+  cloud_share_aria: 'Cloud-Sync-Konfiguration als Link teilen',
+  cloud_shared: 'Link geteilt',
+  cloud_copied: 'Link in Zwischenablage kopiert',
+  cloud_apply_prompt: 'Cloud-Sync-Konfiguration aus diesem Link übernehmen?',
+  cloud_applied: 'Konfiguration übernommen',
 };
 
 const EN: Dict = {
@@ -158,6 +164,12 @@ const EN: Dict = {
   cloud_status_error: 'Error',
   cloud_save: 'Save',
   cloud_warning: 'Treat the household ID like a password. Both devices need the same ID.',
+  cloud_share: 'Share config',
+  cloud_share_aria: 'Share cloud sync config as a link',
+  cloud_shared: 'Link shared',
+  cloud_copied: 'Link copied to clipboard',
+  cloud_apply_prompt: 'Apply cloud sync config from this link?',
+  cloud_applied: 'Config applied',
 };
 
 const DICTS: Record<Lang, Dict> = { de: DE, en: EN };

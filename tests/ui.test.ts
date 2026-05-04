@@ -534,6 +534,59 @@ describe('renderApp', () => {
       expect(overlay.textContent).toContain('Verbunden');
     });
 
+    it('cloud-share button is disabled when fields empty', () => {
+      const { root } = setup();
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const btn = root.querySelector<HTMLButtonElement>('[data-action="cloud-share"]')!;
+      expect(btn.disabled).toBe(true);
+    });
+
+    it('cloud-share button enabled once config has all 3 fields', () => {
+      const { root, state, store } = setup();
+      state.supabaseConfig = {
+        url: 'https://x.supabase.co',
+        anonKey: 'eyJ',
+        household: 'hh',
+        enabled: false,
+      };
+      renderApp(root, state, store);
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const btn = root.querySelector<HTMLButtonElement>('[data-action="cloud-share"]')!;
+      expect(btn.disabled).toBe(false);
+    });
+
+    it('cloud-share click writes to clipboard when navigator.share missing', async () => {
+      const { root, state, store } = setup();
+      state.supabaseConfig = {
+        url: 'https://x.supabase.co',
+        anonKey: 'eyJ',
+        household: 'hh',
+        enabled: false,
+      };
+      renderApp(root, state, store);
+      const calls: string[] = [];
+      const originalClipboard = (navigator as { clipboard?: unknown }).clipboard;
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (s: string) => calls.push(s) },
+      });
+      try {
+        root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+        root.querySelector<HTMLButtonElement>('[data-action="cloud-share"]')!.click();
+        await new Promise((r) => setTimeout(r, 0));
+        expect(calls).toHaveLength(1);
+        expect(calls[0]).toMatch(/#cfg=/);
+      } finally {
+        if (originalClipboard === undefined)
+          delete (navigator as { clipboard?: unknown }).clipboard;
+        else
+          Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: originalClipboard,
+          });
+      }
+    });
+
     it('cloud-generate button populates household input with UUID-like string', () => {
       const { root } = setup();
       root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
