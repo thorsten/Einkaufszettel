@@ -29,7 +29,7 @@ pnpm preview --host  # serve dist on LAN — open URL on iPhone Safari
 3. Share → **Add to Home Screen**
 4. Launches full screen, runs offline
 
-For real deployment: drop `dist/` on any static host (Netlify, Cloudflare Pages, GitHub Pages).
+For real deployment see [Deployment](#deployment).
 
 ## Two-iPhone sync workflow
 
@@ -119,6 +119,39 @@ pnpm test:watch      # watch mode
 | `tests/storage.test.ts`  | localStorage + mergeMarkdown integration |
 | `tests/theme.test.ts`    | Cycle, persistence, media-query reaction |
 | `tests/ui.test.ts`       | Render, add / toggle / delete, XSS       |
+
+## Deployment
+
+### GitHub Pages (automatic)
+
+A GitHub Actions workflow at [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request:
+
+| Job        | When                   | Steps                                      |
+| ---------- | ---------------------- | ------------------------------------------ |
+| **test**   | every push + PR        | `pnpm install` → `pnpm lint` → `pnpm test` |
+| **build**  | after `test` passes    | `pnpm build` with Pages-aware `BASE_PATH`  |
+| **deploy** | only on push to `main` | publishes `dist/` artifact to GitHub Pages |
+
+One-time repo setup:
+
+1. **Settings → Pages → Source**: select **GitHub Actions**.
+2. Push to `main`. Workflow runs, deploys to `https://<user>.github.io/<repo>/`.
+3. Subsequent pushes auto-redeploy.
+
+`BASE_PATH` is detected automatically by `actions/configure-pages` and passed to `vite build`. PWA `start_url` and `scope` follow the base path.
+
+### Custom domain or root path
+
+Set the GitHub Pages custom domain in repo settings, or override locally:
+
+```bash
+BASE_PATH=/ pnpm build           # root deploy
+BASE_PATH=/some-path/ pnpm build # custom subpath
+```
+
+### Other static hosts
+
+Run `pnpm build`, upload `dist/`. Works on Netlify, Cloudflare Pages, Vercel, S3, any static host. Set `BASE_PATH=/` (default) unless serving from subpath.
 
 ## Tech
 
