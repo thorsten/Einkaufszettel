@@ -36,9 +36,9 @@ pnpm preview --host  # serve dist on LAN — open URL on iPhone Safari
 
 For real deployment see [Deployment](#deployment).
 
-## Two-iPhone sync workflow
+## Two-iPhone sync — two options
 
-No server. Markdown files are the wire format.
+### Option A: Markdown file exchange (offline, no backend)
 
 1. **Phone A**: tap **Export** → "Save to Files" → iCloud Drive folder.
 2. **Phone B**: tap **Sync** → file picker → choose Phone A's `.md`.
@@ -46,6 +46,17 @@ No server. Markdown files are the wire format.
 4. Phone B re-exports, Phone A imports. Symmetric.
 
 Each export is named `einkaufszettel-<deviceId>-<date>.md` so files don't collide.
+
+### Option B: Supabase realtime (push sync, optional)
+
+1. Create a Supabase project. Run [`docs/supabase-schema.sql`](docs/supabase-schema.sql) in the SQL editor.
+2. In the app, open **⚙️ Settings → Cloud sync (Supabase)**:
+   - paste the project URL + anon key
+   - tap **Generate** for a household ID, then copy that ID to the second device
+   - tick **Enable** and **Save**
+3. Both phones now push every mutation as a debounced upsert and subscribe to Postgres-changes for the household. Local CRDT merge runs on every inbound row, so order/timing don't matter.
+
+The household UUID is the **shared secret** — anyone with URL + anon key + household ID can read and write that household's items. Tighten with Supabase Auth + a memberships table for stricter setups.
 
 ## Architecture
 

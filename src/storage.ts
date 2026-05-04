@@ -10,8 +10,17 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
+export type SaveListener = (lists: ShopLists) => void;
+
 export class ListStore {
+  private listeners: Set<SaveListener> = new Set();
+
   constructor(private readonly storage: StorageLike) {}
+
+  onSave(listener: SaveListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
 
   load(): ShopLists {
     const raw = this.storage.getItem(STORAGE_KEY);
@@ -24,6 +33,11 @@ export class ListStore {
   }
 
   save(lists: ShopLists, order?: Shop[]): void {
+    this.storage.setItem(STORAGE_KEY, serializeAll(lists, order));
+    for (const l of this.listeners) l(lists);
+  }
+
+  saveQuiet(lists: ShopLists, order?: Shop[]): void {
     this.storage.setItem(STORAGE_KEY, serializeAll(lists, order));
   }
 

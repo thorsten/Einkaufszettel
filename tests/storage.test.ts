@@ -92,6 +92,20 @@ describe('ListStore', () => {
     expect(merged.ALDI[0].name).toBe('new');
   });
 
+  it('save fires onSave listeners; saveQuiet does not', () => {
+    const calls: number[] = [];
+    const off = store.onSave(() => calls.push(1));
+    const lists = emptyLists();
+    lists.ALDI = [mkItem({ id: 'a', name: 'Milch' })];
+    store.save(lists);
+    expect(calls).toHaveLength(1);
+    store.saveQuiet(lists);
+    expect(calls).toHaveLength(1);
+    off();
+    store.save(lists);
+    expect(calls).toHaveLength(1);
+  });
+
   it('exportMarkdown produces parseable text', () => {
     const lists = emptyLists();
     lists['V-MARKT'] = [mkItem({ id: 'x', name: 'Wein', lamport: 3 })];

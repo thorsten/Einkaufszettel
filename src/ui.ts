@@ -6,6 +6,8 @@ import { maxLamport, maxPos, minPos, newItem } from './markdown';
 import { shareMarkdown } from './share';
 import type { ShopRegistry } from './shops';
 import type { ListStore } from './storage';
+import type { SupabaseConfig, SupabaseSync, SyncStatus } from './supabase';
+import { generateHouseholdId } from './sync-helpers';
 import type { TemplateStore } from './templates';
 import { THEME_ICON, type ThemeController } from './theme';
 import { type Item, type Shop, type ShopLists, shopMeta } from './types';
@@ -37,6 +39,10 @@ export interface AppState {
   search?: string;
   settingsOpen?: boolean;
   voiceActive?: boolean;
+  supabaseConfig: SupabaseConfig;
+  supabaseSync?: SupabaseSync | null;
+  supabaseStatus: SyncStatus;
+  onSupabaseSave?: (config: SupabaseConfig) => void;
 }
 
 const SVG_LANG = `<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14M9 8a8 8 0 0 0 6 13M9 21a8 8 0 0 1 6-13M3 12h18"/></svg>`;
@@ -269,6 +275,19 @@ function renderToast(state: AppState): string {
   `;
 }
 
+function supabaseStatusClass(status: SyncStatus): string {
+  switch (status) {
+    case 'connected':
+      return 'text-emerald-600 dark:text-emerald-400';
+    case 'connecting':
+      return 'text-amber-600 dark:text-amber-400';
+    case 'error':
+      return 'text-rose-600 dark:text-rose-400';
+    default:
+      return 'text-slate-500 dark:text-slate-400';
+  }
+}
+
 function renderSettings(state: AppState): string {
   const t = state.i18n.t.bind(state.i18n);
   const shops = state.shops.shops;
@@ -302,6 +321,25 @@ function renderSettings(state: AppState): string {
             <form data-form="shop-add" class="mt-3 flex gap-2">
               <input name="name" type="text" placeholder="${escapeHtml(t('shop_add_placeholder'))}" class="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" required />
               <button type="submit" class="rounded-md bg-teal-600 px-3 py-1.5 text-sm font-semibold text-white">+</button>
+            </form>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">${escapeHtml(t('cloud_section'))}</h3>
+            <p class="mb-2 text-[11px] text-slate-500 dark:text-slate-400">${escapeHtml(t('cloud_warning'))}</p>
+            <form data-form="supabase" class="space-y-2">
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="enabled" ${state.supabaseConfig.enabled ? 'checked' : ''} class="h-4 w-4 accent-teal-600" />
+                <span>${escapeHtml(t('cloud_enable'))}</span>
+                <span class="ml-auto text-[11px] ${supabaseStatusClass(state.supabaseStatus)}">${escapeHtml(t('cloud_status_' + state.supabaseStatus))}</span>
+              </label>
+              <input name="url" type="url" placeholder="${escapeHtml(t('cloud_url'))}" value="${escapeHtml(state.supabaseConfig.url)}" class="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800" />
+              <input name="anonKey" type="text" placeholder="${escapeHtml(t('cloud_anon_key'))}" value="${escapeHtml(state.supabaseConfig.anonKey)}" class="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs dark:border-slate-600 dark:bg-slate-800" />
+              <div class="flex gap-2">
+                <input name="household" type="text" placeholder="${escapeHtml(t('cloud_household'))}" value="${escapeHtml(state.supabaseConfig.household)}" class="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs dark:border-slate-600 dark:bg-slate-800" />
+                <button type="button" data-action="cloud-generate" class="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium dark:bg-slate-800">${escapeHtml(t('cloud_household_generate'))}</button>
+              </div>
+              <button type="submit" class="w-full rounded-md bg-teal-600 px-3 py-1.5 text-sm font-semibold text-white">${escapeHtml(t('cloud_save'))}</button>
             </form>
           </section>
 
@@ -673,6 +711,28 @@ function bind(root: HTMLElement, state: AppState, store: ListStore): void {
       rerender();
     });
   });
+
+  // Settings — Supabase
+  const cloudForm = root.querySelector<HTMLFormElement>('[data-form="supabase"]');
+  cloudForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = new FormData(cloudForm);
+    const cfg = {
+      enabled: data.get('enabled') === 'on',
+      url: String(data.get('url') ?? '').trim(),
+      anonKey: String(data.get('anonKey') ?? '').trim(),
+      household: String(data.get('household') ?? '').trim(),
+    };
+    state.supabaseConfig = cfg;
+    state.onSupabaseSave?.(cfg);
+    renderApp(root, state, store);
+  });
+  root
+    .querySelector<HTMLButtonElement>('[data-action="cloud-generate"]')
+    ?.addEventListener('click', () => {
+      const input = cloudForm?.querySelector<HTMLInputElement>('input[name="household"]');
+      if (input) input.value = generateHouseholdId();
+    });
 
   root.querySelectorAll<HTMLButtonElement>('[data-action="template-remove"]').forEach((btn) => {
     btn.addEventListener('click', () => {

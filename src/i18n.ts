@@ -69,6 +69,18 @@ const DE: Dict = {
   template_remove: 'Löschen',
   template_none: 'Keine Vorlagen gespeichert.',
   template_applied: 'Vorlage angewendet',
+  cloud_section: 'Cloud-Sync (Supabase)',
+  cloud_enable: 'Cloud-Sync aktivieren',
+  cloud_url: 'Supabase-URL',
+  cloud_anon_key: 'Anon Key',
+  cloud_household: 'Haushalts-ID',
+  cloud_household_generate: 'Neu generieren',
+  cloud_status_idle: 'Inaktiv',
+  cloud_status_connecting: 'Verbinde…',
+  cloud_status_connected: 'Verbunden',
+  cloud_status_error: 'Fehler',
+  cloud_save: 'Speichern',
+  cloud_warning: 'Haushalts-ID wie ein Passwort behandeln. Beide Geräte brauchen dieselbe ID.',
 };
 
 const EN: Dict = {
@@ -134,6 +146,18 @@ const EN: Dict = {
   template_remove: 'Delete',
   template_none: 'No templates saved.',
   template_applied: 'Template applied',
+  cloud_section: 'Cloud sync (Supabase)',
+  cloud_enable: 'Enable cloud sync',
+  cloud_url: 'Supabase URL',
+  cloud_anon_key: 'Anon key',
+  cloud_household: 'Household ID',
+  cloud_household_generate: 'Generate',
+  cloud_status_idle: 'Idle',
+  cloud_status_connecting: 'Connecting…',
+  cloud_status_connected: 'Connected',
+  cloud_status_error: 'Error',
+  cloud_save: 'Save',
+  cloud_warning: 'Treat the household ID like a password. Both devices need the same ID.',
 };
 
 const DICTS: Record<Lang, Dict> = { de: DE, en: EN };

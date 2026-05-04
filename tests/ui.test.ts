@@ -67,6 +67,8 @@ function setup(): { root: HTMLElement; state: AppState; store: ListStore } {
     undo: new UndoStack(),
     shops,
     templates,
+    supabaseConfig: { url: '', anonKey: '', household: '', enabled: false },
+    supabaseStatus: 'idle',
   };
   renderApp(root, state, store);
   return { root, state, store };
@@ -498,6 +500,48 @@ describe('renderApp', () => {
       } finally {
         delete win.SpeechRecognition;
       }
+    });
+  });
+
+  describe('cloud sync settings', () => {
+    it('submitting cloud form persists config and notifies parent', () => {
+      const { root, state } = setup();
+      const saved: (typeof state.supabaseConfig)[] = [];
+      state.onSupabaseSave = (cfg) => saved.push(cfg);
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const form = root.querySelector<HTMLFormElement>('[data-form="supabase"]')!;
+      form.querySelector<HTMLInputElement>('input[name="url"]')!.value = 'https://x.supabase.co';
+      form.querySelector<HTMLInputElement>('input[name="anonKey"]')!.value = 'eyJ';
+      form.querySelector<HTMLInputElement>('input[name="household"]')!.value = 'hh-1';
+      form.querySelector<HTMLInputElement>('input[name="enabled"]')!.checked = true;
+      form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      expect(saved).toHaveLength(1);
+      expect(saved[0]).toMatchObject({
+        url: 'https://x.supabase.co',
+        anonKey: 'eyJ',
+        household: 'hh-1',
+        enabled: true,
+      });
+      expect(state.supabaseConfig.enabled).toBe(true);
+    });
+
+    it('renders status pill reflecting state.supabaseStatus', () => {
+      const { root, state, store } = setup();
+      state.supabaseStatus = 'connected';
+      renderApp(root, state, store);
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const overlay = root.querySelector('[data-settings-overlay]')!;
+      expect(overlay.textContent).toContain('Verbunden');
+    });
+
+    it('cloud-generate button populates household input with UUID-like string', () => {
+      const { root } = setup();
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      root.querySelector<HTMLButtonElement>('[data-action="cloud-generate"]')!.click();
+      const input = root.querySelector<HTMLInputElement>(
+        '[data-form="supabase"] input[name="household"]',
+      )!;
+      expect(input.value).toMatch(/^[0-9a-f-]{32,40}$/i);
     });
   });
 

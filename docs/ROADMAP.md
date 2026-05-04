@@ -10,16 +10,10 @@ All eight Tier 1 features implemented. See [Done](#done) at bottom.
 
 All seven Tier 2 features implemented. See [Done](#done) at bottom.
 
-## Tier 3 — sync upgrades (3–7 days)
+## Tier 3 — sync upgrade ✅ shipped 2026-05-04 (v0.4.0)
 
-Only worth it if file-picker sync proves clunky.
-
-| Feature                             | Trade-off                                                                                                                     |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **QR-code handshake → WebRTC sync** | Two phones scan QR, peer connection, push merged CRDT. No backend. Works only when both online and nearby.                    |
-| **Native iOS shell (Capacitor)**    | Real iCloud Drive read/write via `NSFileCoordinator` + `NSMetadataQuery` — sync becomes invisible. Adds Xcode build pipeline. |
-| **CloudKit private DB + CKShare**   | True push sync, no native shell needed for offline. Ties you to Apple ID.                                                     |
-| **Supabase realtime** (alt)         | Cross-platform (also web), realtime channel, RLS. Adds backend + auth.                                                        |
+Supabase realtime sync. See [Done](#done) at bottom. Other Tier 3 options
+(QR/WebRTC, Capacitor + iCloud Drive, CloudKit) dropped from scope.
 
 ## Tier 4 — smart features (1–2 weeks each, optional)
 
@@ -59,6 +53,15 @@ If forced to pick three first: **edit-in-place**, **swipe-to-delete**, **recent-
 - Replace any tier section if scope shifts. Keep file under ~300 lines.
 
 ## Done
+
+### v0.4.0 — 2026-05-04
+
+| Feature                  | Module                                                   |
+| ------------------------ | -------------------------------------------------------- |
+| Supabase realtime sync   | `src/supabase.ts` `SupabaseSync` + `src/sync-helpers.ts` |
+| Settings: Cloud section  | `src/ui.ts` `[data-form="supabase"]`                     |
+| Schema + RLS             | `docs/supabase-schema.sql`                               |
+| ListStore save listeners | `src/storage.ts` `onSave` / `saveQuiet`                  |
 
 ### v0.3.0 — 2026-05-04
 

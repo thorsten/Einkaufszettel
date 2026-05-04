@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-04
+
+### Added
+
+- **Supabase realtime sync** — optional cloud transport for two-device sync without manual file exchange.
+  - `src/supabase.ts` — `SupabaseSync` class: initial pull + Postgres-changes subscription + debounced upsert.
+  - `src/sync-helpers.ts` — `applyIncoming` reuses CRDT `compareItem`; `generateHouseholdId` for fresh UUIDs.
+  - Settings drawer gains a Cloud-sync section: enable toggle, URL, anon key, household ID, status indicator.
+  - `ListStore` exposes `onSave` listeners; saves auto-trigger `sync.push`. Inbound items use `saveQuiet` to avoid push echo.
+  - Schema in `docs/supabase-schema.sql` — single table partitioned by household UUID, RLS enabled, realtime publication included.
+  - Security note: household UUID is the shared secret. Treat it like a password. Tighten RLS / add Supabase Auth for stricter setups.
+- 11 new tests across `tests/sync-helpers.test.ts` and `tests/supabase.test.ts` (mocked client).
+
+### Changed
+
+- Roadmap Tier 3 trimmed to Supabase only — QR/WebRTC, Capacitor, and CloudKit options dropped.
+- `dependencies` now includes `@supabase/supabase-js` (was devDeps-only before).
+- JS bundle-size budget raised: 15 KB → 80 KB gzipped (Supabase SDK is ~45 KB gzipped). Future task: lazy-load `supabase.ts` when `enabled=false`.
+
 ### Added
 
 - **Husky** + **commitlint** + **lint-staged** dev tooling.
@@ -96,7 +115,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `theme`, `ui`.
 - MIT license.
 
-[Unreleased]: https://github.com/thorsten/Einkaufszettel/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/thorsten/Einkaufszettel/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/thorsten/Einkaufszettel/releases/tag/v0.4.0
 [0.3.0]: https://github.com/thorsten/Einkaufszettel/releases/tag/v0.3.0
 [0.2.0]: https://github.com/thorsten/Einkaufszettel/releases/tag/v0.2.0
 [0.1.0]: https://github.com/thorsten/Einkaufszettel/releases/tag/v0.1.0
