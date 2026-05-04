@@ -11,14 +11,19 @@ Offline shopping list PWA for **V-MARKT, ALDI, EDEKA, REWE**. Built for two iPho
 - ⚡ No frontend framework. TypeScript + Tailwind v4 + bare DOM
 - ✅ 60 vitest tests
 
+## Requirements
+
+- Node.js **≥ 24**
+- pnpm **10** (or compatible)
+
 ## Quick start
 
 ```bash
 pnpm install
-pnpm dev          # local dev server
-pnpm test         # vitest run
-pnpm lint         # prettier --check + tsc --noEmit
-pnpm build        # production build (PWA)
+pnpm dev             # local dev server
+pnpm test            # vitest run
+pnpm lint            # prettier --check + tsc --noEmit
+pnpm build           # production build (PWA)
 pnpm preview --host  # serve dist on LAN — open URL on iPhone Safari
 ```
 
@@ -155,13 +160,14 @@ Run `pnpm build`, upload `dist/`. Works on Netlify, Cloudflare Pages, Vercel, S3
 
 ## Tech
 
-- **Vite 5** — dev server + build
-- **TypeScript 5** strict
+- **Node.js 24+** runtime
+- **Vite 7** — dev server + build
+- **TypeScript 6** strict
 - **Tailwind v4** with class-based `dark` variant
-- **vite-plugin-pwa** — service worker, manifest, autoUpdate
-- **Vitest 1** + **happy-dom** — unit + DOM tests
+- **vite-plugin-pwa 1.x** — service worker, manifest, autoUpdate
+- **Vitest 4** + **happy-dom 20** — unit + DOM tests
 - **Prettier 3** — formatting + lint
-- **pnpm** — package manager
+- **pnpm 10** — package manager
 
 No React, Vue, Svelte, Solid, lit, etc. Just TypeScript and DOM.
 
