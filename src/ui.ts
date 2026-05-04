@@ -9,6 +9,14 @@ import type { ListStore } from './storage';
 import type { TemplateStore } from './templates';
 import { THEME_ICON, type ThemeController } from './theme';
 import { type Item, type Shop, type ShopLists, shopMeta } from './types';
+import {
+  escapeHtml,
+  formatTime,
+  groupByCategory,
+  matchesSearch,
+  sortForRender,
+  visibleItems,
+} from './ui-pure';
 import type { UndoStack } from './undo';
 import { VERSION } from './version';
 import { isVoiceSupported, startVoice } from './voice';
@@ -40,19 +48,6 @@ const SVG_SETTINGS = `<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" strok
 const SVG_MIC = `<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`;
 const SVG_SEARCH = `<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>`;
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function visibleItems(items: Item[]): Item[] {
-  return items.filter((i) => !i.tomb);
-}
-
 function stamp(state: AppState, existing?: Item): Pick<Item, 'ts' | 'lamport' | 'dev'> {
   if (existing) state.clock.observe(existing.lamport);
   return { ts: Date.now(), lamport: state.clock.tick(), dev: state.device };
@@ -72,37 +67,6 @@ function clearStaleToast(state: AppState): void {
 
 function ensureShopBucket(state: AppState, shop: Shop): void {
   if (!state.lists[shop]) state.lists[shop] = [];
-}
-
-function matchesSearch(it: Item, q: string): boolean {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  return it.name.toLowerCase().includes(needle) || (it.cat ?? '').toLowerCase().includes(needle);
-}
-
-interface CategoryGroup {
-  cat: string;
-  label: string;
-  items: Item[];
-}
-
-function groupByCategory(items: Item[], unknownLabel: string): CategoryGroup[] {
-  const groups = new Map<string, CategoryGroup>();
-  for (const it of items) {
-    const cat = it.cat ?? '';
-    const key = cat || '__none__';
-    let g = groups.get(key);
-    if (!g) {
-      g = { cat: key, label: cat || unknownLabel, items: [] };
-      groups.set(key, g);
-    }
-    g.items.push(it);
-  }
-  return [...groups.values()].sort((a, b) => {
-    if (a.cat === '__none__') return 1;
-    if (b.cat === '__none__') return -1;
-    return a.label.localeCompare(b.label);
-  });
 }
 
 export function renderApp(root: HTMLElement, state: AppState, store: ListStore): void {
@@ -219,12 +183,7 @@ function renderItemsSection(filtered: Item[], all: Item[], state: AppState): str
   if (filtered.length === 0) {
     return `<div class="mt-12 text-center text-slate-500 dark:text-slate-400"><p>${escapeHtml(t('no_search_results'))}</p></div>`;
   }
-  // sort visible: not-done first by pos asc, then done by pos asc
-  const sorted = [...filtered].sort((a, b) => {
-    if (a.done !== b.done) return Number(a.done) - Number(b.done);
-    return a.pos - b.pos;
-  });
-  const groups = groupByCategory(sorted, t('category_uncategorized'));
+  const groups = groupByCategory(sortForRender(filtered), t('category_uncategorized'));
   return groups
     .map(
       (g) => `
@@ -237,11 +196,6 @@ function renderItemsSection(filtered: Item[], all: Item[], state: AppState): str
   `,
     )
     .join('');
-}
-
-function formatTime(ms: number): string {
-  const t = new Date(ms);
-  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
 }
 
 function renderTab(shop: Shop, state: AppState): string {
@@ -612,22 +566,25 @@ function bind(root: HTMLElement, state: AppState, store: ListStore): void {
     startVoice({
       lang: state.i18n.lang === 'en' ? 'en-US' : 'de-DE',
       onResult: ({ transcript }) => {
-        const input = root.querySelector<HTMLInputElement>('[data-form="add"] input[name="name"]');
-        if (input) input.value = transcript;
         state.voiceActive = false;
         state.toast = undefined;
         renderApp(root, state, store);
         const re = root.querySelector<HTMLInputElement>('[data-form="add"] input[name="name"]');
-        if (re) re.focus();
+        if (re) {
+          re.value = transcript;
+          re.focus();
+        }
       },
       onError: () => {
         state.voiceActive = false;
         renderApp(root, state, store);
       },
       onEnd: () => {
-        state.voiceActive = false;
-        state.toast = undefined;
-        renderApp(root, state, store);
+        if (state.voiceActive) {
+          state.voiceActive = false;
+          state.toast = undefined;
+          renderApp(root, state, store);
+        }
       },
     });
   });
@@ -773,12 +730,9 @@ function doReorder(
   root: HTMLElement,
 ): void {
   const items = state.lists[state.active] ?? [];
-  const visible = visibleItems(items)
-    .filter((it) => matchesSearch(it, state.search ?? ''))
-    .sort((a, b) => {
-      if (a.done !== b.done) return Number(a.done) - Number(b.done);
-      return a.pos - b.pos;
-    });
+  const visible = sortForRender(
+    visibleItems(items).filter((it) => matchesSearch(it, state.search ?? '')),
+  );
   const idx = visible.findIndex((x) => x.id === id);
   const target = idx + dir;
   if (idx < 0 || target < 0 || target >= visible.length) return;

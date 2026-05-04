@@ -9,7 +9,7 @@ Offline shopping list PWA for **V-MARKT, ALDI, EDEKA, REWE**. Built for two iPho
 - 🧩 CRDT merge — conflict-free, deterministic, commutative
 - 🪦 Tombstones for deletes, 30-day GC
 - ⚡ No frontend framework. TypeScript + Tailwind v4 + bare DOM
-- ✅ 116 vitest unit tests + 39 Playwright E2E tests (×2 browsers), coverage gate, conventional-commits enforced via husky
+- ✅ 151 unit tests, 51 Playwright E2E specs (chromium + iOS Safari), 90 % line coverage gate, Lighthouse PWA gate, bundle-size budget, conventional-commits enforced via husky
 
 ## Requirements
 
@@ -148,7 +148,7 @@ pnpm e2e --project=chromium     # only one browser
 pnpm e2e --ui                   # interactive Playwright UI
 ```
 
-E2E specs cover: items (add/toggle/edit/delete/clear/undo), search + categories, reorder, header (theme/lang/tabs), settings drawer (custom shops + templates), persistence across reload.
+E2E specs cover: items (add/toggle/edit/delete/clear/undo), search + categories, reorder, header (theme/lang/tabs), settings drawer (custom shops + templates), persistence across reload, touch gestures (swipe-to-delete + pull-to-refresh on mobile-safari only), and PWA install flow (manifest, service worker, meta tags).
 
 The Playwright `webServer` runs `vite build && vite preview` on port 4173, so tests hit the same artifact that ships to GitHub Pages.
 
@@ -170,18 +170,41 @@ The Playwright `webServer` runs `vite build && vite preview` on port 4173, so te
 | `tests/voice.test.ts`     | SpeechRecognition wrapper + support detection          |
 | `tests/ui.test.ts`        | Render, add / toggle / delete / edit / undo / settings |
 
+## Quality gates
+
+| Gate              | Tool                              | Threshold                |
+| ----------------- | --------------------------------- | ------------------------ |
+| Coverage (lines)  | Vitest + v8                       | ≥ 90 %                   |
+| Bundle size (JS)  | size-limit                        | ≤ 15 KB gzipped          |
+| Bundle size (CSS) | size-limit                        | ≤ 8 KB gzipped           |
+| Bundle size (SW)  | size-limit                        | ≤ 5 KB gzipped           |
+| PWA installable   | Lighthouse `installable-manifest` | error if not installable |
+| Service worker    | Lighthouse `service-worker`       | error if not registered  |
+| Performance       | Lighthouse perf category          | ≥ 0.9                    |
+| Accessibility     | Lighthouse a11y category          | ≥ 0.9                    |
+| Best practices    | Lighthouse                        | warn if < 0.9            |
+
+Run locally:
+
+```bash
+pnpm test:coverage   # coverage gate
+pnpm build && pnpm size           # bundle size budget
+pnpm build && pnpm lighthouse     # full Lighthouse audit
+```
+
 ## Deployment
 
 ### GitHub Pages (automatic)
 
 A GitHub Actions workflow at [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request:
 
-| Job        | When                                | Steps                                               |
-| ---------- | ----------------------------------- | --------------------------------------------------- |
-| **test**   | every push + PR                     | `pnpm install` → `pnpm lint` → `pnpm test:coverage` |
-| **e2e**    | after `test` passes                 | Playwright × {chromium, mobile-safari} matrix       |
-| **build**  | after `test` passes                 | `pnpm build` with Pages-aware `BASE_PATH`           |
-| **deploy** | only on push to `main` (after both) | publishes `dist/` artifact to GitHub Pages          |
+| Job            | When                               | Steps                                                                |
+| -------------- | ---------------------------------- | -------------------------------------------------------------------- |
+| **test**       | every push + PR                    | `pnpm lint` → `pnpm test:coverage` (≥ 90 % lines)                    |
+| **e2e**        | after `test` passes                | Playwright × {chromium, mobile-safari} matrix, ~51 specs             |
+| **build**      | after `test` passes                | `pnpm build` (with Pages `BASE_PATH`) → `pnpm size` (gzipped budget) |
+| **lighthouse** | after `build` passes               | `lhci autorun` against `dist/` — perf / a11y / PWA / SEO audits      |
+| **deploy**     | only on push to `main` (after all) | publishes `dist/` artifact to GitHub Pages                           |
 
 One-time repo setup:
 

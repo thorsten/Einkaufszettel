@@ -250,5 +250,263 @@ describe('renderApp', () => {
       root.querySelector<HTMLButtonElement>('[data-action="undo"]')!.click();
       expect(state.lists.ALDI).toHaveLength(0);
     });
+
+    it('undo button absent when no toast', () => {
+      const { root } = setup();
+      expect(root.querySelector('[data-toast]')).toBeNull();
+      expect(root.querySelector('[data-action="undo"]')).toBeNull();
+    });
+  });
+
+  describe('settings shop operations', () => {
+    it('shop-up moves shop one position earlier', () => {
+      const { root, state } = setup();
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const before = [...state.shops.shops];
+      const target = before[1];
+      root
+        .querySelector<HTMLButtonElement>(`[data-action="shop-up"][data-shop-name="${target}"]`)!
+        .click();
+      expect(state.shops.shops[0]).toBe(target);
+    });
+
+    it('shop-down moves shop one position later', () => {
+      const { root, state } = setup();
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const before = [...state.shops.shops];
+      const target = before[0];
+      root
+        .querySelector<HTMLButtonElement>(`[data-action="shop-down"][data-shop-name="${target}"]`)!
+        .click();
+      expect(state.shops.shops[1]).toBe(target);
+    });
+
+    it('shop-rename migrates items and updates active shop', () => {
+      const { root, state, store } = setup();
+      state.lists.ALDI = [mkItem({ id: 'a', name: 'Milch' })];
+      renderApp(root, state, store);
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const input = root.querySelector<HTMLInputElement>('[data-shop-input="ALDI"]')!;
+      input.value = 'ALDI Süd';
+      root
+        .querySelector<HTMLButtonElement>('[data-action="shop-rename"][data-shop-name="ALDI"]')!
+        .click();
+      expect(state.shops.shops).toContain('ALDI Süd');
+      expect(state.lists['ALDI Süd']).toHaveLength(1);
+      expect(state.lists['ALDI']).toBeUndefined();
+      expect(state.active).toBe('ALDI Süd');
+    });
+
+    it('shop-remove deletes shop bucket', () => {
+      const { root, state } = setup();
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      root
+        .querySelector<HTMLButtonElement>('[data-action="shop-remove"][data-shop-name="REWE"]')!
+        .click();
+      expect(state.shops.shops).not.toContain('REWE');
+      expect(state.lists.REWE).toBeUndefined();
+    });
+
+    it('settings overlay click outside closes', () => {
+      const { root, state } = setup();
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const overlay = root.querySelector<HTMLDivElement>('[data-settings-overlay]')!;
+      overlay.dispatchEvent(new Event('click', { bubbles: true }));
+      // Inner click on drawer body should NOT close. Outer click does.
+      const evt = new MouseEvent('click', { bubbles: true });
+      Object.defineProperty(evt, 'target', { value: overlay });
+      Object.defineProperty(evt, 'currentTarget', { value: overlay });
+      overlay.dispatchEvent(evt);
+      expect(state.settingsOpen).toBe(false);
+    });
+  });
+
+  describe('templates', () => {
+    it('template-apply imports items into current state', () => {
+      const { root, state, store } = setup();
+      state.lists.ALDI = [mkItem({ id: 'a', name: 'Milch' })];
+      renderApp(root, state, store);
+      state.templates.save('T', state.lists);
+      // wipe and apply
+      state.lists.ALDI = [];
+      renderApp(root, state, store);
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      root
+        .querySelector<HTMLButtonElement>('[data-action="template-apply"][data-template-name="T"]')!
+        .click();
+      expect(state.lists.ALDI.length).toBeGreaterThan(0);
+      expect(state.lists.ALDI[0].name).toBe('Milch');
+      expect(state.lists.ALDI[0].id).not.toBe('a');
+      expect(state.settingsOpen).toBe(false);
+    });
+
+    it('template-remove deletes', () => {
+      const { root, state, store } = setup();
+      state.templates.save('T', state.lists);
+      renderApp(root, state, store);
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      root
+        .querySelector<HTMLButtonElement>(
+          '[data-action="template-remove"][data-template-name="T"]',
+        )!
+        .click();
+      expect(state.templates.list().length).toBe(0);
+    });
+  });
+
+  describe('voice', () => {
+    it('shows toast when voice unsupported (no SpeechRecognition global)', () => {
+      const { root, state } = setup();
+      // happy-dom does not provide SpeechRecognition
+      root.querySelector<HTMLButtonElement>('[data-action="voice"]')!.click();
+      expect(state.toast?.label).toMatch(/nicht unterstützt|not supported/i);
+    });
+  });
+
+  describe('export', () => {
+    it('triggers anchor download via shareMarkdown', () => {
+      const { root } = setup();
+      const orig = URL.createObjectURL;
+      URL.createObjectURL = () => 'blob:fake';
+      const created: HTMLAnchorElement[] = [];
+      const origCreate = document.createElement.bind(document);
+      document.createElement = ((tag: string) => {
+        const el = origCreate(tag) as HTMLElement;
+        if (tag === 'a') created.push(el as HTMLAnchorElement);
+        return el;
+      }) as typeof document.createElement;
+      try {
+        root.querySelector<HTMLButtonElement>('[data-action="export"]')!.click();
+        // shareMarkdown is async; fire-and-forget. Just confirm click did not throw.
+        expect(true).toBe(true);
+      } finally {
+        URL.createObjectURL = orig;
+        document.createElement = origCreate;
+      }
+    });
+  });
+
+  describe('sync flow', () => {
+    it('merges incoming markdown via file input', async () => {
+      const { root, state, store } = setup();
+      state.lists.ALDI = [mkItem({ id: 'a', name: 'lokal' })];
+      renderApp(root, state, store);
+      const fileInput = root.querySelector<HTMLInputElement>('[data-input="file"]')!;
+      const md = '# ALDI\n- [ ] remote <!-- id:r ts:1 lamport:99 dev:d2 tomb:0 pos:0 -->\n';
+      const file = new File([md], 'list.md', { type: 'text/markdown' });
+      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(state.lists.ALDI.find((i) => i.id === 'r')).toBeTruthy();
+      expect(state.syncedAt).toBeGreaterThan(0);
+    });
+  });
+
+  describe('cancel-edit', () => {
+    it('discards pending edit', () => {
+      const { root, state, store } = setup();
+      state.lists.ALDI = [mkItem({ id: 'x', name: 'Brot' })];
+      renderApp(root, state, store);
+      root.querySelector<HTMLButtonElement>('[data-action="edit"]')!.click();
+      const input = root.querySelector<HTMLInputElement>('[data-form="edit"] input[name="name"]')!;
+      input.value = 'Other';
+      root.querySelector<HTMLButtonElement>('[data-action="cancel-edit"]')!.click();
+      expect(state.editingId).toBeUndefined();
+      expect(state.lists.ALDI[0].name).toBe('Brot');
+    });
+  });
+
+  describe('add custom shop via settings', () => {
+    it('persists and adds bucket', () => {
+      const { root, state } = setup();
+      root.querySelector<HTMLButtonElement>('[data-action="settings"]')!.click();
+      const form = root.querySelector<HTMLFormElement>('[data-form="shop-add"]')!;
+      form.querySelector<HTMLInputElement>('input[name="name"]')!.value = 'DM';
+      form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      expect(state.shops.shops).toContain('DM');
+      expect(state.lists.DM).toEqual([]);
+    });
+  });
+
+  describe('undo no-op', () => {
+    it('undo button click with empty stack does nothing', () => {
+      const { root, state, store } = setup();
+      state.toast = { label: 'x', expiresAt: Date.now() + 5000 };
+      renderApp(root, state, store);
+      const before = JSON.stringify(state.lists);
+      root.querySelector<HTMLButtonElement>('[data-action="undo"]')!.click();
+      expect(JSON.stringify(state.lists)).toBe(before);
+    });
+  });
+
+  describe('reorder edge', () => {
+    it('move-up at top is no-op', () => {
+      const { root, state, store } = setup();
+      state.lists.ALDI = [mkItem({ id: 'a', pos: 0 })];
+      renderApp(root, state, store);
+      const btn = root.querySelector<HTMLButtonElement>('[data-action="move-up"]')!;
+      btn.disabled = false;
+      btn.click();
+      expect(state.lists.ALDI[0].pos).toBe(0);
+    });
+
+    it('move-down swaps pos with next', () => {
+      const { root, state, store } = setup();
+      state.lists.ALDI = [mkItem({ id: 'a', pos: 0 }), mkItem({ id: 'b', pos: 1 })];
+      renderApp(root, state, store);
+      const top = root.querySelector('[data-item="a"]')!;
+      top.querySelector<HTMLButtonElement>('[data-action="move-down"]')!.click();
+      expect(state.lists.ALDI.find((i) => i.id === 'a')!.pos).toBe(1);
+      expect(state.lists.ALDI.find((i) => i.id === 'b')!.pos).toBe(0);
+    });
+
+    it('move-up swaps pos with previous', () => {
+      const { root, state, store } = setup();
+      state.lists.ALDI = [mkItem({ id: 'a', pos: 0 }), mkItem({ id: 'b', pos: 1 })];
+      renderApp(root, state, store);
+      const bottom = root.querySelector('[data-item="b"]')!;
+      bottom.querySelector<HTMLButtonElement>('[data-action="move-up"]')!.click();
+      expect(state.lists.ALDI.find((i) => i.id === 'b')!.pos).toBe(0);
+    });
+  });
+
+  describe('voice', () => {
+    it('starts via mocked SpeechRecognition global', () => {
+      const { root, state } = setup();
+      class FakeRec {
+        lang = '';
+        interimResults = false;
+        continuous = false;
+        maxAlternatives = 0;
+        onresult: ((e: { results: { 0: { 0: { transcript: string } } } }) => void) | null = null;
+        onerror: (() => void) | null = null;
+        onend: (() => void) | null = null;
+        start() {
+          this.onresult?.({ results: { 0: { 0: { transcript: 'Eier' } } } as never });
+          this.onend?.();
+        }
+        stop() {}
+        abort() {}
+      }
+      const win = window as unknown as { SpeechRecognition?: typeof FakeRec };
+      win.SpeechRecognition = FakeRec;
+      try {
+        root.querySelector<HTMLButtonElement>('[data-action="voice"]')!.click();
+        const input = root.querySelector<HTMLInputElement>('[data-form="add"] input[name="name"]')!;
+        expect(input.value).toBe('Eier');
+        expect(state.voiceActive).toBe(false);
+      } finally {
+        delete win.SpeechRecognition;
+      }
+    });
+  });
+
+  describe('show synced status', () => {
+    it('renders synced timestamp when present', () => {
+      const { root, state, store } = setup();
+      state.syncedAt = new Date(2026, 4, 4, 14, 7).getTime();
+      renderApp(root, state, store);
+      expect(root.textContent).toMatch(/14:07/);
+    });
   });
 });

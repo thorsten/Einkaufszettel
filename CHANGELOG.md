@@ -13,11 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `commit-msg` hook enforces [Conventional Commits](https://www.conventionalcommits.org/) via `@commitlint/config-conventional`.
   - `pre-commit` hook runs `lint-staged` (Prettier on staged files), `pnpm typecheck`, and `pnpm test`.
   - Hooks install automatically via `prepare` script on `pnpm install`.
-- **Playwright E2E tests** — 39 specs across 6 files, covering items (add/toggle/edit/delete/clear/undo), search, categories, reorder, header (theme/lang/tabs), settings drawer (custom shops + templates), and persistence.
+- **Playwright E2E tests** — 51 specs across 8 files, covering items (add/toggle/edit/delete/clear/undo), search, categories, reorder, header (theme/lang/tabs), settings drawer (custom shops + templates), persistence, touch gestures (swipe-to-delete + pull-to-refresh, mobile-safari only), and PWA install flow (manifest, service worker, meta tags).
   - `playwright.config.ts` with chromium + mobile-safari (iPhone 14) projects.
   - `webServer` runs `vite build && vite preview --port 4173` so tests hit production-mode artifacts.
-  - New CI job `e2e` matrix-runs both projects in parallel after `test`. `deploy` now depends on both `build` and `e2e`.
+  - New CI job `e2e` matrix-runs both projects in parallel after `test`. `deploy` now depends on `build`, `e2e`, and `lighthouse`.
   - Browsers cached in CI via `actions/cache`.
+- **Coverage gate raised to 90 % lines** (was 80). Functions ≥ 85, statements ≥ 85, branches ≥ 70.
+  - `src/ui-pure.ts` extracted from `ui.ts`: pure functions (`escapeHtml`, `visibleItems`, `matchesSearch`, `groupByCategory`, `formatTime`, `sortForRender`) become directly testable.
+  - 38 new unit tests added (ui-pure + ui handlers + voice + reorder).
+- **Lighthouse PWA audit in CI** via `@lhci/cli`. Asserts `installable-manifest`, `service-worker`, `viewport`, plus perf ≥ 0.9, a11y ≥ 0.9. Reports uploaded as artifacts.
+- **Bundle-size budget** via `size-limit`: JS ≤ 15 KB, CSS ≤ 8 KB, SW ≤ 5 KB (all gzipped). Runs in `build` job.
 
 ## [0.3.0] - 2026-05-04
 

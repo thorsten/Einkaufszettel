@@ -22,8 +22,28 @@
     "format:check": "prettier --check .",
     "lint": "prettier --check . && tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "size": "size-limit",
+    "size:why": "size-limit --why",
+    "lighthouse": "lhci autorun",
     "prepare": "husky"
   },
+  "size-limit": [
+    {
+      "name": "JS bundle (gzip)",
+      "path": "dist/assets/index-*.js",
+      "limit": "15 KB"
+    },
+    {
+      "name": "CSS bundle (gzip)",
+      "path": "dist/assets/index-*.css",
+      "limit": "8 KB"
+    },
+    {
+      "name": "Service worker (gzip)",
+      "path": "dist/sw.js",
+      "limit": "5 KB"
+    }
+  ],
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs,json,md,css,html,yml,yaml}": "prettier --write"
   },
@@ -35,7 +55,9 @@
   "devDependencies": {
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.59.1",
+    "@size-limit/file": "^12.1.0",
     "@tailwindcss/vite": "^4.2.4",
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.5",
@@ -43,6 +65,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.3",
+    "size-limit": "^12.1.0",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
     "vite": "^7.3.2",

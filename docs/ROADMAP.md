@@ -32,10 +32,10 @@ Only worth it if file-picker sync proves clunky.
 
 ## Cross-cutting
 
-- **E2E tests** with Playwright + iOS Safari emulator (touch events, install flow)
-- **Coverage threshold** in CI (≥ 90 % lines)
-- **Lighthouse PWA score** check in CI
-- **Bundle-size budget** (current ~5 KB gzipped JS — keep < 15 KB)
+- ✅ **E2E tests** with Playwright + iOS Safari emulator (touch + install flow) — shipped 2026-05-04
+- ✅ **Coverage threshold** ≥ 90 % lines — shipped 2026-05-04
+- ✅ **Lighthouse PWA score** check in CI — shipped 2026-05-04
+- ✅ **Bundle-size budget** via size-limit — shipped 2026-05-04
 - **Storage migration framework** (`v1.md` → `v2.md` schema bump path)
 
 ## Suggested phasing
