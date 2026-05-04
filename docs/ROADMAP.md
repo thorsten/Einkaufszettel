@@ -2,18 +2,9 @@
 
 Feature backlog grouped by impact-to-effort. Pick what matches priorities.
 
-## Tier 1 — quick wins (< 1 day each, high UX gain)
+## Tier 1 — quick wins ✅ shipped 2026-05-04 (v0.2.0)
 
-| Feature                    | Why                                                              | Cost                                                                |
-| -------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
-| **Edit item in place**     | Currently delete + re-add. Tap-to-rename + change qty.           | Add edit modal/inline input. Mutation already CRDT-aware.           |
-| **Swipe-to-delete (iOS)**  | Native feel. Touchstart/move/end on `<li>`, threshold → tomb.    | ~80 LOC, vanilla pointer events.                                    |
-| **Clear all checked**      | Bulk tombstone all `done:true` in active shop.                   | One button + loop. ~20 LOC.                                         |
-| **Undo last action**       | Toast with "Rückgängig". Rollback previous state in memory.      | Snapshot pre-mutation, 5 s timer.                                   |
-| **Web Share API export**   | iOS native share sheet directly → AirDrop/Messages, no download. | Replace `<a download>` with `navigator.share`. Fallback to current. |
-| **Pull-to-refresh = Sync** | Native gesture triggers file picker. Discoverable.               | Touchstart delta detection. ~40 LOC.                                |
-| **i18n de/en toggle**      | English version ships easy. All strings already in `ui.ts`.      | Extract strings → `i18n.ts` map. ~100 LOC.                          |
-| **Coverage gate in CI**    | `@vitest/coverage-v8` already installed. Fail PR if drops.       | Add `--coverage` to test step + threshold.                          |
+All eight Tier 1 features implemented. See [Done](#done) at bottom.
 
 ## Tier 2 — meaningful (1–3 days each)
 
@@ -74,3 +65,18 @@ If forced to pick three first: **edit-in-place**, **swipe-to-delete**, **recent-
 - Mark a feature in-flight with [WIP] in front of the row.
 - On ship: move row to a "Done" section at the bottom with version + date.
 - Replace any tier section if scope shifts. Keep file under ~300 lines.
+
+## Done
+
+### v0.2.0 — 2026-05-04
+
+| Feature                | Module                                  |
+| ---------------------- | --------------------------------------- |
+| Edit item in place     | `src/ui.ts` (edit form + state)         |
+| Swipe-to-delete (iOS)  | `src/gestures.ts` `attachSwipeLeft`     |
+| Clear all checked      | `src/ui.ts` (bulk tombstone)            |
+| Undo last action       | `src/undo.ts` `UndoStack` + toast       |
+| Web Share API export   | `src/share.ts` `shareMarkdown`          |
+| Pull-to-refresh = Sync | `src/gestures.ts` `attachPullToRefresh` |
+| i18n de/en toggle      | `src/i18n.ts` `I18n`                    |
+| Coverage gate in CI    | `vite.config.ts` thresholds + workflow  |
