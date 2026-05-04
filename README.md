@@ -49,14 +49,51 @@ Each export is named `einkaufszettel-<deviceId>-<date>.md` so files don't collid
 
 ### Option B: Supabase realtime (push sync, optional)
 
-1. Create a Supabase project. Run [`docs/supabase-schema.sql`](docs/supabase-schema.sql) in the SQL editor.
-2. In the app, open **⚙️ Settings → Cloud sync (Supabase)**:
-   - paste the project URL + anon key
-   - tap **Generate** for a household ID, then copy that ID to the second device
-   - tick **Enable** and **Save**
-3. Both phones now push every mutation as a debounced upsert and subscribe to Postgres-changes for the household. Local CRDT merge runs on every inbound row, so order/timing don't matter.
+Both phones now push every mutation as a debounced upsert and subscribe to Postgres-changes for the household. Local CRDT merge runs on every inbound row, so order/timing don't matter.
 
-The household UUID is the **shared secret** — anyone with URL + anon key + household ID can read and write that household's items. Tighten with Supabase Auth + a memberships table for stricter setups.
+#### 1. Create a Supabase project
+
+Sign in at [supabase.com](https://supabase.com) and create a free project (any region close to you).
+
+#### 2. Run the schema
+
+Dashboard → **SQL Editor** → **+ New query** → paste the contents of [`docs/supabase-schema.sql`](docs/supabase-schema.sql) → **Run**. This creates table `einkaufszettel_items`, enables RLS, and registers it for realtime.
+
+#### 3. Find Supabase URL + anon key
+
+Dashboard → **Project Settings ⚙ → API**.
+
+| App field    | Dashboard field                      | Looks like                                     |
+| ------------ | ------------------------------------ | ---------------------------------------------- |
+| Supabase URL | "Project URL"                        | `https://abcdefghij.supabase.co`               |
+| Anon key     | "Project API keys → `anon` `public`" | `eyJhbGciOiJIUzI1NiIs…` (long JWT, ~200 chars) |
+
+⚠️ Use the **`anon`** key (safe to ship in a client). **Do not** use `service_role` — that key bypasses RLS and is server-only.
+
+#### 4. Generate a household UUID (in the app, not Supabase)
+
+The household UUID is generated client-side and **partitions your data inside the shared table**.
+
+- Phone A: open ⚙ **Settings → Cloud-Sync (Supabase)** → tap **Neu generieren / Generate** next to **Haushalts-ID / Household ID**. App produces something like `b3a7f2e1-9c4d-4f12-aaaa-1234567890ab`.
+- Copy that UUID to **Phone B** (AirDrop, Messages, manual copy, QR — any channel). Paste into the same field on Phone B.
+- Both devices must use the **identical** household UUID.
+
+#### 5. Enable + save
+
+Per device:
+
+```
+Supabase URL:   https://<project-ref>.supabase.co
+Anon key:       eyJhbGc…
+Household ID:   <generated on Phone A, copied to Phone B>
+Enable:         ☑
+```
+
+Tap **Speichern / Save**. Status pill should turn **Verbunden / Connected** within ~1 s.
+
+#### Security model
+
+The household UUID is the **shared secret**. Anyone with URL + anon key + UUID can read and write that household's items. Don't paste the UUID into public Slack/Discord/screenshots. For stronger isolation, switch to Supabase Auth + a memberships table; tighten the RLS policies in `docs/supabase-schema.sql` accordingly.
 
 ## Architecture
 
