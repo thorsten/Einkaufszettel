@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-vmarkt: #c8102e;
+  --color-aldi: #00549f;
+  --color-edeka: #fcd116;
+  --color-rewe: #cc071e;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+html.dark body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+input,
+textarea,
+button {
+  font-size: 16px;
+}
