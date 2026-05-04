@@ -9,7 +9,7 @@ Offline shopping list PWA for **V-MARKT, ALDI, EDEKA, REWE**. Built for two iPho
 - 🧩 CRDT merge — conflict-free, deterministic, commutative
 - 🪦 Tombstones for deletes, 30-day GC
 - ⚡ No frontend framework. TypeScript + Tailwind v4 + bare DOM
-- ✅ 116 vitest tests, coverage gate, conventional-commits enforced via husky
+- ✅ 116 vitest unit tests + 39 Playwright E2E tests (×2 browsers), coverage gate, conventional-commits enforced via husky
 
 ## Requirements
 
@@ -130,11 +130,27 @@ Hooks install automatically via the `prepare` script on `pnpm install`. Skip in 
 
 ## Tests
 
+### Unit tests (Vitest)
+
 ```bash
 pnpm test            # full suite, ~10 s
 pnpm test:watch      # watch mode
 pnpm test:coverage   # with coverage gate
 ```
+
+### End-to-end tests (Playwright)
+
+```bash
+pnpm e2e:install     # one-time browser install (~250 MB)
+pnpm e2e             # build + serve dist + run on chromium + mobile-safari
+pnpm e2e:report      # open last HTML report
+pnpm e2e --project=chromium     # only one browser
+pnpm e2e --ui                   # interactive Playwright UI
+```
+
+E2E specs cover: items (add/toggle/edit/delete/clear/undo), search + categories, reorder, header (theme/lang/tabs), settings drawer (custom shops + templates), persistence across reload.
+
+The Playwright `webServer` runs `vite build && vite preview` on port 4173, so tests hit the same artifact that ships to GitHub Pages.
 
 | File                      | Coverage                                               |
 | ------------------------- | ------------------------------------------------------ |
@@ -160,11 +176,12 @@ pnpm test:coverage   # with coverage gate
 
 A GitHub Actions workflow at [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request:
 
-| Job        | When                   | Steps                                      |
-| ---------- | ---------------------- | ------------------------------------------ |
-| **test**   | every push + PR        | `pnpm install` → `pnpm lint` → `pnpm test` |
-| **build**  | after `test` passes    | `pnpm build` with Pages-aware `BASE_PATH`  |
-| **deploy** | only on push to `main` | publishes `dist/` artifact to GitHub Pages |
+| Job        | When                                | Steps                                               |
+| ---------- | ----------------------------------- | --------------------------------------------------- |
+| **test**   | every push + PR                     | `pnpm install` → `pnpm lint` → `pnpm test:coverage` |
+| **e2e**    | after `test` passes                 | Playwright × {chromium, mobile-safari} matrix       |
+| **build**  | after `test` passes                 | `pnpm build` with Pages-aware `BASE_PATH`           |
+| **deploy** | only on push to `main` (after both) | publishes `dist/` artifact to GitHub Pages          |
 
 One-time repo setup:
 

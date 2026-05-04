@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `commit-msg` hook enforces [Conventional Commits](https://www.conventionalcommits.org/) via `@commitlint/config-conventional`.
   - `pre-commit` hook runs `lint-staged` (Prettier on staged files), `pnpm typecheck`, and `pnpm test`.
   - Hooks install automatically via `prepare` script on `pnpm install`.
+- **Playwright E2E tests** — 39 specs across 6 files, covering items (add/toggle/edit/delete/clear/undo), search, categories, reorder, header (theme/lang/tabs), settings drawer (custom shops + templates), and persistence.
+  - `playwright.config.ts` with chromium + mobile-safari (iPhone 14) projects.
+  - `webServer` runs `vite build && vite preview --port 4173` so tests hit production-mode artifacts.
+  - New CI job `e2e` matrix-runs both projects in parallel after `test`. `deploy` now depends on both `build` and `e2e`.
+  - Browsers cached in CI via `actions/cache`.
 
 ## [0.3.0] - 2026-05-04
 
