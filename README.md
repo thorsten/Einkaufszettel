@@ -171,12 +171,9 @@ Run `pnpm build`, upload `dist/`. Works on Netlify, Cloudflare Pages, Vercel, S3
 
 No React, Vue, Svelte, Solid, lit, etc. Just TypeScript and DOM.
 
-## Roadmap (optional)
+## Roadmap
 
-- Push sync via CloudKit shared zone (replace file picker, keep merge logic untouched)
-- Reorder items (drag-and-drop) — needs `pos` field in CRDT
-- Per-shop categories / sections
-- Quantity stepper for common units
+See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full backlog grouped by tier and a suggested phasing.
 
 ## License
 
