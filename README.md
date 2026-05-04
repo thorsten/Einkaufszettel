@@ -175,6 +175,10 @@ No React, Vue, Svelte, Solid, lit, etc. Just TypeScript and DOM.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full backlog grouped by tier and a suggested phasing.
 
+## Changelog
+
+See [`CHANGELOG.md`](CHANGELOG.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

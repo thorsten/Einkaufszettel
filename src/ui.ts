@@ -7,6 +7,7 @@ import type { ListStore } from './storage';
 import { THEME_ICON, type ThemeController } from './theme';
 import { SHOPS, SHOP_META, type Item, type Shop, type ShopLists } from './types';
 import type { UndoStack } from './undo';
+import { VERSION } from './version';
 
 export interface AppState {
   active: Shop;
@@ -70,7 +71,10 @@ export function renderApp(root: HTMLElement, state: AppState, store: ListStore):
       <header class="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
         <div class="mx-auto max-w-2xl px-4 pt-3 pb-2">
           <div class="flex items-center justify-between gap-2">
-            <h1 class="text-lg font-bold tracking-tight">${escapeHtml(t('title'))}</h1>
+            <h1 class="flex items-baseline gap-1.5 text-lg font-bold tracking-tight">
+              <span>${escapeHtml(t('title'))}</span>
+              <span data-version class="text-[10px] font-medium text-slate-400 dark:text-slate-500" aria-label="Version ${escapeHtml(VERSION)}">v${escapeHtml(VERSION)}</span>
+            </h1>
             <div class="flex flex-wrap items-center gap-1">
               <button
                 data-action="theme"

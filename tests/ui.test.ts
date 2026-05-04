@@ -71,6 +71,13 @@ describe('renderApp', () => {
     document.documentElement.classList.remove('dark');
   });
 
+  it('renders version badge in header', async () => {
+    const { root } = setup();
+    const { VERSION } = await import('../src/version');
+    const badge = root.querySelector('[data-version]');
+    expect(badge?.textContent).toBe(`v${VERSION}`);
+  });
+
   it('renders 4 shop tabs', () => {
     const { root } = setup();
     expect(root.querySelectorAll('[data-shop]')).toHaveLength(SHOPS.length);
